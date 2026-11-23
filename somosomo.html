@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>ロボットに おねがい</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f6fa; --panel:#ffffff; --line:#d6dee8; --text:#2b3440; --sub:#5d6b7a;
+  --main:#3a78c9; --mainLight:#e4eefa; --ok:#2f9a5a; --okLight:#e3f4ea;
+  --ng:#d0654b; --ngLight:#fbe9e4; --run:#f0a830; --runLight:#fdf2dc;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:"BIZ UDPGothic",sans-serif;background:var(--bg);color:var(--text);
+  touch-action:manipulation;-webkit-user-select:none;user-select:none;
+  -webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+}
+svg text{font-family:"BIZ UDPGothic",sans-serif}
+ruby rt{font-size:0.5em}
+button{
+  font-family:inherit;color:inherit;border:2px solid var(--line);background:#fff;
+  border-radius:12px;min-width:44px;min-height:44px;cursor:pointer;
+  touch-action:manipulation;
+}
+button:disabled{opacity:.45}
+.screen{display:none;height:100%;width:100%}
+.screen.show{display:flex}
+
+/* ===== スタート画面 ===== */
+#start{flex-direction:column;align-items:center;overflow-y:auto;padding:24px 20px}
+#start h1{font-size:34px;margin:8px 0 10px;color:var(--main)}
+.lead{font-size:19px;line-height:2;text-align:center;color:var(--sub);margin-bottom:18px}
+.stageList{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;max-width:860px;margin-bottom:22px}
+.stageBtn{width:250px;padding:16px;text-align:left;border-color:var(--main);background:var(--panel)}
+.stageBtn .num{font-size:15px;color:var(--main);font-weight:700}
+.stageBtn .name{font-size:22px;font-weight:700;margin:6px 0 4px;line-height:1.7}
+.stageBtn .clear{font-size:15px;color:var(--ok);font-weight:700;min-height:1.4em}
+.settings{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:14px 18px;max-width:640px;width:100%}
+.settings h2{font-size:17px;color:var(--sub);margin-bottom:8px}
+.setRow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;flex-wrap:wrap}
+.setRow .lbl{font-size:17px;line-height:1.8}
+.seg{display:flex;gap:6px}
+.seg button{padding:6px 14px;font-size:16px}
+.seg button.on{background:var(--main);border-color:var(--main);color:#fff;font-weight:700}
+
+/* ===== 活動画面 ===== */
+#play{flex-direction:column;padding:10px 14px;gap:10px}
+.topBar{display:flex;align-items:center;gap:10px}
+.topBar .back{font-size:16px;padding:6px 12px}
+.topBar .title{font-size:22px;font-weight:700;flex:1;line-height:1.7}
+.topBar .try{font-size:16px;color:var(--sub)}
+.mainArea{flex:1;display:flex;gap:12px;min-height:0}
+.panel{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:12px}
+.sceneP{flex:1.25;display:flex;flex-direction:column;gap:8px;min-height:0}
+.goal{font-size:17px;line-height:1.9;background:var(--mainLight);border-radius:10px;padding:6px 12px}
+.sceneWrap{flex:1;min-height:120px;display:flex;align-items:center;justify-content:center}
+#scene{width:100%;height:100%;max-height:100%}
+.bubble{
+  position:relative;background:#fff;border:2px solid var(--line);border-radius:14px;
+  padding:8px 14px;font-size:20px;line-height:1.9;min-height:3.2em;
+}
+.bubble::before{
+  content:"";position:absolute;left:28%;top:-12px;border:10px solid transparent;
+  border-bottom-color:var(--line);border-top:0;
+}
+.bubble.ok{border-color:var(--ok);background:var(--okLight)}
+.bubble.ng{border-color:var(--ng);background:var(--ngLight)}
+.state{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:15px;line-height:1.8;padding:2px 10px;border-radius:20px;background:#eef1f5;border:1px solid var(--line)}
+.chip.changed{background:var(--runLight);border-color:var(--run)}
+
+.prog{flex:0.9;display:flex;flex-direction:column;gap:8px;min-height:0}
+.progHead{font-size:17px;font-weight:700;line-height:1.8;display:flex;justify-content:space-between;align-items:center}
+.progHead .cnt{font-size:15px;color:var(--sub);font-weight:400}
+#progList{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;min-height:0}
+.empty{color:var(--sub);font-size:17px;line-height:1.9;padding:10px}
+.pCard{
+  display:flex;align-items:center;gap:8px;border:2px solid var(--main);border-radius:10px;
+  background:#fff;padding:4px 8px;min-height:46px;font-size:18px;line-height:1.7;width:100%;
+  touch-action:none;cursor:grab;flex-shrink:0;
+}
+.pCard .grip{color:#9aa7b5;font-size:18px;letter-spacing:-2px;flex-shrink:0}
+.pCard .no{
+  width:30px;height:30px;border-radius:50%;background:var(--main);color:#fff;font-size:15px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700;
+}
+.pCard .txt{flex:1}
+.pCard .del{font-size:14px;color:var(--sub)}
+.pCard.now{border-color:var(--run);background:var(--runLight)}
+.pCard.now .no{background:var(--run)}
+.pCard.done{border-color:var(--ok)}
+.pCard.done .no{background:var(--ok)}
+.pCard.fail{border-color:var(--ng);background:var(--ngLight)}
+.pCard.fail .no{background:var(--ng)}
+.pCard .mark{font-size:14px;font-weight:700}
+.pCard.fail .mark{color:var(--ng)}
+.pCard.dragging{opacity:.3;border-style:dashed}
+.ghost{position:fixed;z-index:50;pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.18);transform:scale(1.03);background:#fff}
+.ctrl{display:flex;gap:8px}
+.ctrl button{flex:1;font-size:20px;font-weight:700;padding:8px}
+#runBtn{background:var(--main);border-color:var(--main);color:#fff}
+#runBtn.stop{background:#fff;color:var(--ng);border-color:var(--ng)}
+
+.palette{display:flex;flex-direction:column;gap:6px}
+.palHead{font-size:16px;color:var(--sub);line-height:1.8}
+#palList{display:flex;flex-wrap:wrap;gap:8px}
+.cardBtn{font-size:19px;line-height:1.7;padding:6px 14px;border-color:var(--main);background:var(--mainLight);font-weight:700}
+#msg{font-size:17px;line-height:1.9;min-height:1.9em;color:var(--sub)}
+#msg.ng{color:var(--ng);font-weight:700}
+#msg.ok{color:var(--ok);font-weight:700}
+
+/* ===== 場面のアニメーション ===== */
+@keyframes steam{0%{transform:translateY(6px);opacity:0}40%{opacity:.8}100%{transform:translateY(-14px);opacity:0}}
+.steam{animation:steam 1.8s ease-out infinite}
+.steam2{animation-delay:.6s}.steam3{animation-delay:1.2s}
+@keyframes pour{0%{stroke-dashoffset:60}100%{stroke-dashoffset:0}}
+.pour{stroke-dasharray:8 6;animation:pour .5s linear infinite}
+@keyframes fall{0%{transform:translateY(-8px);opacity:0}30%{opacity:1}100%{transform:translateY(26px);opacity:0}}
+.fall{animation:fall .9s ease-in infinite}
+.fall2{animation-delay:.3s}.fall3{animation-delay:.6s}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin 1s linear infinite}
+.spinSlow{animation:spin 3s linear infinite}
+@keyframes pop{0%{transform:scale(.6);opacity:0}50%{opacity:1}100%{transform:scale(1.15);opacity:0}}
+.pop{transform-box:fill-box;transform-origin:center;animation:pop 1s ease-out infinite}
+.pop2{animation-delay:.33s}.pop3{animation-delay:.66s}
+@keyframes jump{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.fxText{animation:jump .6s ease-in-out infinite}
+
+/* ===== 結果画面 ===== */
+#result{flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;text-align:center}
+#result h2{font-size:40px;color:var(--ok)}
+#resRobot{width:130px;height:195px}
+.resInfo{font-size:22px;line-height:2}
+.resBtns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.resBtns button{font-size:20px;padding:10px 22px;font-weight:700}
+.resBtns .primary{background:var(--main);border-color:var(--main);color:#fff}
+
+/* iPad縦向き */
+@media (orientation:portrait){
+  .mainArea{flex-direction:column}
+  .sceneP{flex:1.3}
+  .prog{flex:1}
+}
+/* スマホ横向き */
+@media (orientation:landscape) and (max-height:500px){
+  #play{padding:6px 8px;gap:6px}
+  .topBar .title{font-size:17px}
+  .topBar .back{min-height:38px}
+  .panel{padding:6px}
+  .goal{display:none}
+  .bubble{font-size:14px;min-height:2.6em;padding:4px 10px}
+  .chip{font-size:12px}
+  .progHead{font-size:14px}
+  .pCard{font-size:14px;min-height:38px}
+  .pCard .no{width:24px;height:24px;font-size:12px}
+  .cardBtn{font-size:14px;padding:4px 10px;min-height:38px}
+  .ctrl button{font-size:16px;padding:4px;min-height:38px}
+  #msg{font-size:14px}
+  .palHead{display:none}
+  #start h1{font-size:26px}
+  .stageBtn{width:200px}
+  .stageBtn .name{font-size:18px}
+  #resRobot{width:80px;height:120px}
+  #result h2{font-size:28px}
+  .resInfo{font-size:17px}
+}
+/* スマホ縦向き */
+@media (orientation:portrait) and (max-width:500px){
+  #play{padding:6px 8px;gap:6px}
+  .topBar .title{font-size:16px}
+  .panel{padding:6px}
+  .goal{font-size:13px;padding:2px 8px}
+  .bubble{font-size:14px;min-height:2.6em;padding:4px 10px}
+  .chip{font-size:12px}
+  .pCard{font-size:15px;min-height:38px}
+  .cardBtn{font-size:15px;padding:4px 10px;min-height:38px}
+  .ctrl button{font-size:17px;min-height:40px}
+  #msg{font-size:14px}
+  .palHead{font-size:13px}
+  #start h1{font-size:26px}
+  .lead{font-size:16px}
+  .stageBtn{width:100%}
+}
+</style>
+</head>
+<body>
+
+<!-- スタート画面 -->
+<div id="start" class="screen show">
+  <h1>ロボットに おねがい</h1>
+  <p class="lead">ロボットは、いわれた とおりにしか うごかないよ。<br>
+    カードを じゅんばんに ならべて、ロボットに おねがいしてね。</p>
+  <div class="stageList" id="stageList"></div>
+  <div class="settings">
+    <h2><ruby>先生<rt>せんせい</rt></ruby>の せってい</h2>
+    <div class="setRow">
+      <span class="lbl">うごく はやさ</span>
+      <div class="seg" data-key="speed">
+        <button data-v="slow">ゆっくり</button><button data-v="normal">ふつう</button>
+      </div>
+    </div>
+    <div class="setRow">
+      <span class="lbl">いらない カードを まぜる</span>
+      <div class="seg" data-key="extra">
+        <button data-v="on">まぜる</button><button data-v="off">まぜない</button>
+      </div>
+    </div>
+    <div class="setRow">
+      <span class="lbl"><ruby>音<rt>おと</rt></ruby></span>
+      <div class="seg" data-key="sound">
+        <button data-v="on">あり</button><button data-v="off">なし</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 活動画面 -->
+<div id="play" class="screen">
+  <div class="topBar">
+    <button class="back" id="backBtn">もどる</button>
+    <div class="title" id="stageTitle"></div>
+    <div class="try" id="tryCount"></div>
+  </div>
+  <div class="mainArea">
+    <div class="panel sceneP">
+      <div class="goal" id="goalText"></div>
+      <div class="sceneWrap"><svg id="scene" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid meet"></svg></div>
+      <div class="bubble" id="bubble"></div>
+      <div class="state" id="stateBox"></div>
+    </div>
+    <div class="panel prog">
+      <div class="progHead">
+        <span>おねがいの じゅんばん</span><span class="cnt" id="progCnt"></span>
+      </div>
+      <div id="progList"></div>
+      <div class="ctrl">
+        <button id="clearBtn">ぜんぶ けす</button>
+        <button id="runBtn">うごかす</button>
+      </div>
+    </div>
+  </div>
+  <div class="panel palette">
+    <div class="palHead">カードを タップすると、じゅんばんの さいごに ならぶよ。ならんだ カードは、ドラッグで じゅんばんを かえられるよ。タップすると けせるよ。</div>
+    <div id="palList"></div>
+    <div id="msg"></div>
+  </div>
+</div>
+
+<!-- 結果画面 -->
+<div id="result" class="screen">
+  <h2>できたね！</h2>
+  <svg id="resRobot" viewBox="0 0 130 195"></svg>
+  <div class="resInfo" id="resInfo"></div>
+  <div class="resBtns" id="resBtns"></div>
+</div>
+
+<script>
+/* ---------- ふりがな ---------- */
+// {漢字|かんじ} を ruby に変換
+function r(s){return s.replace(/\{([^|}]+)\|([^}]+)\}/g,'<ruby>$1<rt>$2</rt></ruby>');}
+
+/* ---------- 設定（localStorage は try/catch） ---------- */
+const settings={speed:'slow',extra:'off',sound:'on'};
+let cleared={};
+function load(){
+  try{
+    const s=JSON.parse(localStorage.getItem('robotOnegai_settings')||'null');
+    if(s)Object.assign(settings,s);
+    cleared=JSON.parse(localStorage.getItem('robotOnegai_cleared')||'{}')||{};
+  }catch(e){}
+}
+function save(){
+  try{
+    localStorage.setItem('robotOnegai_settings',JSON.stringify(settings));
+    localStorage.setItem('robotOnegai_cleared',JSON.stringify(cleared));
+  }catch(e){}
+}
+
+/* ---------- 効果音 ---------- */
+let actx=null;
+function unlockAudio(){
+  try{
+    if(!actx){const AC=window.AudioContext||window.webkitAudioContext;if(AC)actx=new AC();}
+    if(actx&&actx.state==='suspended')actx.resume();
+  }catch(e){}
+}
+function tone(freq,dur,when,vol){
+  if(settings.sound!=='on'||!actx)return;
+  try{
+    const t=actx.currentTime+(when||0);
+    const o=actx.createOscillator(),g=actx.createGain();
+    o.type='sine';o.frequency.value=freq;
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(vol||0.12,t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+dur+0.05);
+  }catch(e){}
+}
+const sndStep=()=>tone(660,0.12);
+const sndOk=()=>{tone(523,0.18,0);tone(659,0.18,0.15);tone(784,0.3,0.3);};
+const sndNg=()=>{tone(392,0.2,0,0.08);tone(330,0.3,0.18,0.08);};
+const sndTap=()=>tone(880,0.06,0,0.06);
+
+/* ---------- 絵のパーツ ---------- */
+const ST='stroke="#7d8a99" stroke-width="3"';
+function fxText(t,x,y){return `<g class="fxText"><text x="${x||385}" y="${y||34}" text-anchor="end" font-size="24" font-weight="700" fill="#e08a2c" stroke="#fff" stroke-width="4" paint-order="stroke">${t}</text></g>`;}
+function room(wall){
+  return `<rect x="0" y="0" width="400" height="240" fill="${wall||'#f7f9fc'}"/>
+  <rect x="0" y="222" width="400" height="18" fill="#e3e8ee"/>`;
+}
+function table(){
+  return `<rect x="200" y="150" width="195" height="10" rx="3" fill="#e9d3b0" stroke="#b99a6e" stroke-width="2"/>
+  <rect x="212" y="160" width="9" height="62" fill="#d9bf95"/><rect x="374" y="160" width="9" height="62" fill="#d9bf95"/>`;
+}
+
+/* ---------- ロボット（脚つき） ---------- */
+// ローカル座標：はば130・高さ195。右うでは かた(100,114)を中心に回る
+function robotSVG(face,hand){
+  const eyeL=face==='happy'?'<path d="M40 62 q8 -9 16 0" stroke="#2b3440" stroke-width="4" fill="none" stroke-linecap="round"/>'
+    :face==='sad'?'<path d="M40 58 l14 -5" stroke="#2b3440" stroke-width="4" stroke-linecap="round"/><circle cx="48" cy="66" r="5" fill="#2b3440"/>'
+    :face==='sleep'?'<path d="M40 64 h16" stroke="#2b3440" stroke-width="4" stroke-linecap="round"/>'
+    :'<circle cx="48" cy="62" r="7" fill="#2b3440"/>';
+  const eyeR=face==='happy'?'<path d="M74 62 q8 -9 16 0" stroke="#2b3440" stroke-width="4" fill="none" stroke-linecap="round"/>'
+    :face==='sad'?'<path d="M90 58 l-14 -5" stroke="#2b3440" stroke-width="4" stroke-linecap="round"/><circle cx="82" cy="66" r="5" fill="#2b3440"/>'
+    :face==='sleep'?'<path d="M74 64 h16" stroke="#2b3440" stroke-width="4" stroke-linecap="round"/>'
+    :'<circle cx="82" cy="62" r="7" fill="#2b3440"/>';
+  const mouth=face==='happy'?'<path d="M48 80 q17 14 34 0" stroke="#2b3440" stroke-width="4" fill="none" stroke-linecap="round"/>'
+    :face==='sad'?'<path d="M48 86 q8 -7 17 0 q8 7 17 0" stroke="#2b3440" stroke-width="4" fill="none" stroke-linecap="round"/>'
+    :face==='work'?'<rect x="54" y="78" width="22" height="9" rx="4" fill="#2b3440"/>'
+    :'<path d="M52 82 h26" stroke="#2b3440" stroke-width="4" stroke-linecap="round"/>';
+  const lamp=face==='happy'?'#2f9a5a':face==='sad'?'#d0654b':face==='work'?'#f0a830':'#3a78c9';
+  const P='fill="#c9d6e6" stroke="#8a97a6" stroke-width="3"';
+  return `<g class="rbBob">
+    <g class="legL"><rect x="45" y="146" width="14" height="34" rx="5" ${P}/><rect x="38" y="178" width="26" height="12" rx="6" fill="#8a97a6"/></g>
+    <g class="legR"><rect x="71" y="146" width="14" height="34" rx="5" ${P}/><rect x="66" y="178" width="26" height="12" rx="6" fill="#8a97a6"/></g>
+    <rect x="36" y="104" width="58" height="46" rx="10" ${P}/>
+    <circle cx="65" cy="124" r="6" fill="${lamp}"/>
+    <g class="armL"><rect x="24" y="108" width="12" height="36" rx="6" ${P}/><circle cx="30" cy="148" r="7" fill="#8a97a6"/></g>
+    <line x1="65" y1="12" x2="65" y2="30" stroke="#8a97a6" stroke-width="4"/>
+    <circle cx="65" cy="10" r="7" fill="${lamp}"/>
+    <rect x="22" y="30" width="86" height="70" rx="18" fill="#dfe7f1" stroke="#8a97a6" stroke-width="3"/>
+    ${eyeL}${eyeR}${mouth}
+    <g class="armR"><rect x="94" y="108" width="12" height="36" rx="6" ${P}/><circle cx="100" cy="148" r="7" fill="#8a97a6"/>${hand||''}</g>
+  </g>`;
+}
+const RB_X=70, RB_Y=32; // 場面の中のロボットの位置
+const MOUTH={x:RB_X+65,y:RB_Y+84};
+
+/* ---------- いらないカード（共通） ---------- */
+const EXTRA_CARDS=[
+  {id:'dance',label:'おどる',extra:true,pose:'dance',fx:()=>fxText('♪ ♪'),run:()=>({ok:true,msg:'くるくる おどったよ。たのしい！'})},
+  {id:'sleep',label:'ねる',extra:true,pose:'rest',face:'sleep',fx:()=>fxText('Zzz…',190,40),run:()=>({ok:true,msg:'すやすや…。あ、おきたよ。'})}
+];
+
+/* ---------- ステージ ---------- */
+const STAGES=[
+/* ===== カップラーメン ===== */
+{
+  id:'ramen',
+  title:'カップラーメンを {作|つく}る',
+  goal:'カップラーメンを {作|つく}って、{食|た}べるまで おねがいしてね。',
+  init:()=>({lid:'しまっている',kayaku:false,water:false,waited:false,eaten:false,spill:false,kayakuLid:false}),
+  view:s=>[
+    'ふた：'+s.lid,
+    'かやく：'+(s.kayaku?'{入|はい}っている':'{入|はい}っていない'),
+    'お{湯|ゆ}：'+(s.water?'{入|はい}っている':'{入|はい}っていない'),
+    'めん：'+(s.waited?'やわらかい':'かたい')
+  ],
+  draw:(s,fx)=>{
+    const open=s.lid==='あいている';
+    let o=room()+table();
+    if(s.spill)o+=`<ellipse cx="290" cy="151" rx="78" ry="6" fill="#9cc8ee" opacity=".85"/><ellipse cx="225" cy="222" rx="30" ry="4" fill="#9cc8ee" opacity=".8"/>`;
+    // カップ
+    o+=`<polygon points="250,95 330,95 320,150 260,150" fill="#fff" ${ST}/>
+      <polygon points="252,108 328,108 326,124 254,124" fill="#e8806a"/>
+      <text x="290" y="142" text-anchor="middle" font-size="11" fill="#7d8a99" font-weight="700">ラーメン</text>`;
+    if(open){
+      o+=`<ellipse cx="290" cy="95" rx="40" ry="7" fill="${s.water?'#f2d79a':'#efe8d8'}" ${ST}/>`;
+      o+=s.waited?`<path d="M262 95 q6 -6 12 0 t12 0 t12 0 t12 0 t12 0" stroke="#e0b84a" stroke-width="3" fill="none"/>`
+                 :`<path d="M262 96 l6 -4 l6 4 l6 -4 l6 4 l6 -4 l6 4 l6 -4 l6 4 l6 -4 l6 4" stroke="#c99a35" stroke-width="2.5" fill="none"/>`;
+      if(s.kayaku)o+=`<circle cx="276" cy="93" r="3" fill="#6bb36b"/><circle cx="296" cy="96" r="3" fill="#e8806a"/><circle cx="306" cy="92" r="3" fill="#6bb36b"/><circle cx="286" cy="97" r="2.5" fill="#f0c040"/>`;
+      o+=`<rect x="246" y="89" width="88" height="8" rx="3" fill="#f6d36b" stroke="#b9963a" stroke-width="2" transform="rotate(-105 334 93)"/>`;
+      if(s.water)o+=`<g fill="none" stroke="#b8c4d0" stroke-width="3" stroke-linecap="round">
+        <path class="steam" d="M275 82 q-6 -8 0 -16 q6 -8 0 -16"/><path class="steam steam2" d="M292 82 q-6 -8 0 -16 q6 -8 0 -16"/><path class="steam steam3" d="M309 82 q-6 -8 0 -16 q6 -8 0 -16"/></g>`;
+    }else{
+      o+=`<rect x="246" y="89" width="88" height="8" rx="3" fill="#f6d36b" stroke="#b9963a" stroke-width="2"/>`;
+      if(s.kayakuLid)o+=`<circle cx="262" cy="86" r="3" fill="#6bb36b"/><circle cx="280" cy="87" r="3" fill="#e8806a"/><circle cx="305" cy="86" r="3" fill="#6bb36b"/><circle cx="320" cy="87" r="2.5" fill="#f0c040"/>`;
+      if(s.waited&&s.water)o+=`<g fill="none" stroke="#b8c4d0" stroke-width="3" stroke-linecap="round"><path class="steam" d="M334 86 q-5 -6 0 -12"/></g>`;
+    }
+    // 動作の絵
+    if(fx){
+      const id=fx.id;
+      if(id==='water'){
+        o+=`<g><ellipse cx="228" cy="52" rx="22" ry="17" fill="#c9d3de" ${ST}/><path d="M248 50 l22 14" stroke="#7d8a99" stroke-width="6" stroke-linecap="round"/><path d="M216 37 q12 -14 24 0" stroke="#7d8a99" stroke-width="4" fill="none"/></g>
+          <path class="pour" d="M272 66 q12 8 16 ${open?24:20}" stroke="#7ab6e8" stroke-width="5" fill="none" stroke-linecap="round"/>`;
+        o+=fxText(fx.ok?'トポトポ…':'ジャバー！');
+      }else if(id==='kayaku'){
+        o+=`<rect x="262" y="38" width="30" height="20" rx="3" fill="#f0e2c4" stroke="#b99a6e" stroke-width="2" transform="rotate(25 277 48)"/>
+          <circle class="fall" cx="282" cy="66" r="3" fill="#6bb36b"/><circle class="fall fall2" cx="290" cy="64" r="3" fill="#e8806a"/><circle class="fall fall3" cx="286" cy="68" r="3" fill="#f0c040"/>`;
+        o+=fxText(fx.ok?'パラパラ':'あっ…！');
+      }else if(id==='wait'){
+        o+=`<circle cx="360" cy="80" r="22" fill="#fff" ${ST}/><circle cx="360" cy="80" r="3" fill="#2b3440"/>
+          <line class="spinSlow" style="transform-origin:360px 80px" x1="360" y1="80" x2="360" y2="64" stroke="#2b3440" stroke-width="3" stroke-linecap="round"/>
+          <text x="360" y="122" text-anchor="middle" font-size="14" font-weight="700" fill="#5d6b7a">3分</text>`;
+        o+=fxText(fx.ok?'チクタク…':'ぼーっ…',200,34);
+      }else if(id==='eat'){
+        o+=`<line x1="345" y1="30" x2="${open?300:298}" y2="${open?92:86}" stroke="#a8763e" stroke-width="4" stroke-linecap="round"/>
+          <line x1="354" y1="34" x2="${open?307:305}" y2="${open?94:88}" stroke="#a8763e" stroke-width="4" stroke-linecap="round"/>`;
+        if(fx.ok)o+=`<path d="M302 92 q-4 -10 2 -20 q-4 -10 2 -20" stroke="#e0b84a" stroke-width="3" fill="none"/>`;
+        o+=fxText(fx.ok?'ずるずる…':(open?'ガリガリ':'ガリッ！'));
+      }else if(id==='open'||id==='close'){
+        o+=fxText(id==='open'?'ペリッ':'パタン');
+      }
+    }
+    return o;
+  },
+  cards:[
+    {id:'water',label:'お{湯|ゆ}を {入|い}れる',run:s=>{
+      if(s.lid!=='あいている'){s.spill=true;return{ok:false,msg:'ふたの {上|うえ}から お{湯|ゆ}を かけちゃった！テーブルが びしょびしょ…'};}
+      if(s.water){s.spill=true;return{ok:false,msg:'お{湯|ゆ}を {入|い}れすぎて、あふれちゃった！'};}
+      s.water=true;return{ok:true,msg:'お{湯|ゆ}を {入|い}れたよ。'};}},
+    {id:'open',label:'ふたを {開|あ}ける',run:s=>{
+      s.lid='あいている';return{ok:true,msg:'ふたを {開|あ}けたよ。'};}},
+    {id:'eat',label:'{食|た}べる',run:s=>{
+      if(s.lid!=='あいている')return{ok:false,msg:'ふたを したまま {食|た}べようとして、ふたを かじっちゃった！'};
+      if(!s.water)return{ok:false,msg:'お{湯|ゆ}が ないから、かたい めんを ガリガリ…。かたすぎる！'};
+      if(!s.waited)return{ok:false,msg:'まだ めんが かたいよ。もう{少|すこ}し まったほうが いいみたい。'};
+      if(!s.kayaku)return{ok:false,msg:'あじが うすい…。かやくを わすれちゃったかな？'};
+      s.eaten=true;return{ok:true,msg:'いただきます！とっても おいしいよ。'};}},
+    {id:'close',label:'ふたを {閉|し}める',run:s=>{
+      s.lid='しまっている';return{ok:true,msg:'ふたを {閉|し}めたよ。'};}},
+    {id:'kayaku',label:'かやくを {入|い}れる',run:s=>{
+      if(s.lid!=='あいている'){s.kayakuLid=true;return{ok:false,msg:'ふたの {上|うえ}に かやくを ばらまいちゃった！'};}
+      s.kayaku=true;return{ok:true,msg:'かやくを {入|い}れたよ。'};}},
+    {id:'wait',label:'3分 {待|ま}つ',pose:'rest',run:s=>{
+      if(!s.water)return{ok:false,msg:'からっぽの カップを、3分 じっと {見|み}ていたよ…。'};
+      if(s.lid==='あいている')return{ok:false,msg:'ふたが {開|あ}いていたから、お{湯|ゆ}が ぬるくなっちゃった。'};
+      s.waited=true;return{ok:true,msg:'3分 {待|ま}ったよ。めんが やわらかくなったよ。'};}}
+  ],
+  done:s=>s.eaten,
+  notDone:'さいごまで やったけど、まだ {食|た}べていないみたい。'
+},
+/* ===== はみがき ===== */
+{
+  id:'hamigaki',
+  title:'{歯|は}を みがく',
+  goal:'{歯|は}を みがいて、{歯|は}ブラシを かたづけるまで おねがいしてね。',
+  init:()=>({brush:false,paste:false,brushed:false,rinsed:false,washed:false,pasteHand:false}),
+  view:s=>[
+    '{歯|は}ブラシ：'+(s.washed?'かたづけた':s.brush?'もっている':'もっていない'),
+    'はみがきこ：'+(s.paste?'ついている':'ついていない'),
+    '{歯|は}：'+(s.brushed?'ピカピカ':'まだ'),
+    '{口|くち}：'+(s.rinsed?'すっきり':'まだ')
+  ],
+  hand:s=>{
+    let h='';
+    if(s.brush&&!s.washed){
+      h+=`<rect x="96" y="145" width="44" height="7" rx="3" fill="#6aa8e0" stroke="#4a7fb0" stroke-width="1.5"/>
+          <rect x="128" y="138" width="13" height="7" fill="#fff" stroke="#8a97a6" stroke-width="1.5"/>`;
+      if(s.paste)h+=`<ellipse cx="134" cy="135" rx="8" ry="4" fill="#fff" stroke="#8fc7c0" stroke-width="2"/>`;
+    }
+    if(s.pasteHand)h+=`<ellipse cx="100" cy="155" rx="10" ry="5" fill="#fff" stroke="#8fc7c0" stroke-width="2"/>`;
+    return h;
+  },
+  draw:(s,fx)=>{
+    let o=room('#f2f7fb');
+    // かがみ・せんめんだい
+    o+=`<rect x="245" y="16" width="110" height="78" rx="8" fill="#e3eff8" stroke="#9fb3c6" stroke-width="3"/>
+      <path d="M262 30 l20 -8 M262 44 l34 -14" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+      <rect x="200" y="150" width="195" height="72" fill="#e6ecf2" stroke="#9fb3c6" stroke-width="2"/>
+      <ellipse cx="290" cy="152" rx="46" ry="8" fill="#c7d7e6" stroke="#9fb3c6" stroke-width="2"/>
+      <path d="M300 150 v-26 h-20 v8" stroke="#7d8a99" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="350" y="118" width="26" height="32" rx="4" fill="#9fd0c0" stroke="#6aa597" stroke-width="2"/>`;
+    // コップの歯ブラシ
+    if(!s.brush||s.washed)o+=`<line x1="366" y1="124" x2="372" y2="88" stroke="#6aa8e0" stroke-width="6" stroke-linecap="round"/><rect x="367" y="78" width="9" height="12" fill="#fff" stroke="#8a97a6" stroke-width="1.5"/>`;
+    // はみがきこ
+    o+=`<rect x="320" y="136" width="26" height="12" rx="4" fill="#fff" stroke="#8fc7c0" stroke-width="2"/><rect x="314" y="138" width="7" height="8" fill="#8fc7c0"/>`;
+    if(s.brushed&&!(fx&&fx.id==='brushing'))o+=`<text class="fxText" x="${MOUTH.x+28}" y="${MOUTH.y-6}" font-size="18" fill="#f0c040">✦</text>`;
+    if(fx){
+      const id=fx.id;
+      if(id==='brushing'){
+        if(fx.ok)o+=`<circle class="pop" cx="${MOUTH.x-10}" cy="${MOUTH.y+4}" r="6" fill="#fff" stroke="#9fb3c6"/><circle class="pop pop2" cx="${MOUTH.x+12}" cy="${MOUTH.y}" r="5" fill="#fff" stroke="#9fb3c6"/><circle class="pop pop3" cx="${MOUTH.x}" cy="${MOUTH.y+10}" r="7" fill="#fff" stroke="#9fb3c6"/>`;
+        o+=fxText(fx.ok?'シャカシャカ':'ゴシゴシ…？');
+      }else if(id==='rinse'){
+        o+=`<rect x="${MOUTH.x+8}" y="${MOUTH.y-8}" width="16" height="20" rx="3" fill="#bfe0f2" stroke="#7ab6e8" stroke-width="2"/>`;
+        o+=fxText('ガラガラ…ペッ');
+      }else if(id==='wash'){
+        o+=`<path class="pour" d="M280 134 v16" stroke="#7ab6e8" stroke-width="5" stroke-linecap="round"/>`;
+        o+=fxText('ジャー');
+      }else if(id==='paste'){
+        o+=fxText(fx.ok?'ニュッ':'ベタッ！');
+      }else if(id==='hold'){
+        o+=fxText('よいしょ');
+      }
+    }
+    return o;
+  },
+  cards:[
+    {id:'rinse',label:'{口|くち}を ゆすぐ',pose:'mouth',run:s=>{
+      if(!s.brushed)return{ok:true,msg:'{口|くち}を ゆすいだよ。（まだ みがいていないけど…）'};
+      s.rinsed=true;return{ok:true,msg:'{口|くち}を ゆすいだよ。すっきり！'};}},
+    {id:'hold',label:'{歯|は}ブラシを もつ',run:s=>{
+      s.brush=true;s.washed=false;return{ok:true,msg:'{歯|は}ブラシを もったよ。'};}},
+    {id:'wash',label:'{歯|は}ブラシを {洗|あら}う',run:s=>{
+      if(!s.brush)return{ok:false,msg:'{歯|は}ブラシを もっていないから、{手|て}を {洗|あら}っちゃった。'};
+      if(!s.brushed)return{ok:true,msg:'{歯|は}ブラシを {洗|あら}ったよ。（まだ つかっていないけど…）'};
+      s.washed=true;s.paste=false;return{ok:true,msg:'{歯|は}ブラシを {洗|あら}って かたづけたよ。'};}},
+    {id:'brushing',label:'{歯|は}を みがく',pose:'mouth',run:s=>{
+      if(!s.brush||s.washed)return{ok:false,msg:'{歯|は}ブラシが ないから、ゆびで {歯|は}を こすっちゃった…。'};
+      if(!s.paste)return{ok:false,msg:'はみがきこが ついていないよ。あわが でない…。'};
+      s.brushed=true;return{ok:true,msg:'シャカシャカ…。{歯|は}が ピカピカに なったよ。'};}},
+    {id:'paste',label:'はみがきこを つける',run:s=>{
+      if(!s.brush||s.washed){s.pasteHand=true;return{ok:false,msg:'{手|て}に はみがきこを ぬっちゃった！ベタベタ…'};}
+      s.paste=true;return{ok:true,msg:'はみがきこを つけたよ。'};}}
+  ],
+  done:s=>s.rinsed&&s.washed,
+  notDone:'さいごまで やったけど、まだ おわっていないみたい。{口|くち}と {歯|は}ブラシは どうかな？'
+},
+/* ===== せんたく ===== */
+{
+  id:'sentaku',
+  title:'せんたくを する',
+  goal:'せんたくものを {洗|あら}って、ほすまで おねがいしてね。',
+  init:()=>({lid:'あいている',clothes:false,soap:false,washed:false,hung:false,soapLid:false,splash:false}),
+  view:s=>[
+    'ふた：'+s.lid,
+    'せんたくもの：'+(s.hung?'ほしてある':s.clothes?'{中|なか}に ある':'かごの {中|なか}'),
+    'せんざい：'+(s.soap?'{入|はい}っている':'{入|はい}っていない'),
+    'せんたく：'+(s.washed?'おわった':'まだ')
+  ],
+  draw:(s,fx)=>{
+    const open=s.lid==='あいている';
+    let o=room();
+    // ものほし
+    o+=`<line x1="330" y1="20" x2="330" y2="60" stroke="#9fb3c6" stroke-width="3"/><line x1="396" y1="20" x2="396" y2="60" stroke="#9fb3c6" stroke-width="3"/>
+      <line x1="326" y1="24" x2="398" y2="24" stroke="#7d8a99" stroke-width="2"/>`;
+    if(s.hung)o+=`<path d="M338 24 h20 l6 8 l-5 3 v20 h-22 v-20 l-5 -3 z" fill="#8cc0e8" stroke="#5f8fb8" stroke-width="2"/>
+      <path d="M370 24 h20 v30 h-8 v-12 h-4 v12 h-8 z" fill="#f2b880" stroke="#c98a50" stroke-width="2"/>`;
+    if(s.splash)o+=`<ellipse cx="265" cy="224" rx="75" ry="5" fill="#9cc8ee" opacity=".85"/>`;
+    // せんたくき
+    o+=`<rect x="210" y="92" width="110" height="130" rx="10" fill="#f4f6f8" ${ST}/>
+      <rect x="218" y="100" width="40" height="10" rx="3" fill="#dfe6ee"/><circle cx="300" cy="105" r="5" fill="${fx&&fx.id==='start'?'#2f9a5a':'#c9d3de'}"/>
+      <circle cx="265" cy="162" r="34" fill="#dfe9f3" stroke="#9fb3c6" stroke-width="4"/>`;
+    let inner='';
+    if(s.clothes&&!s.hung)inner+=`<rect x="248" y="160" width="20" height="14" rx="4" fill="#8cc0e8" transform="rotate(-20 258 167)"/><rect x="262" y="150" width="18" height="14" rx="4" fill="#f2b880" transform="rotate(25 271 157)"/><rect x="258" y="170" width="16" height="10" rx="3" fill="#e8806a"/>`;
+    if(s.soap)inner+=`<circle cx="250" cy="148" r="5" fill="#fff" stroke="#9fb3c6"/><circle cx="282" cy="172" r="6" fill="#fff" stroke="#9fb3c6"/><circle cx="276" cy="146" r="4" fill="#fff" stroke="#9fb3c6"/>`;
+    const spinning=fx&&fx.id==='start';
+    o+=`<g class="${spinning?'spin':''}" style="transform-origin:265px 162px">${inner}</g>`;
+    // ふた
+    o+=open?`<rect x="212" y="84" width="106" height="9" rx="3" fill="#dfe6ee" stroke="#7d8a99" stroke-width="2" transform="rotate(-100 318 88)"/>`
+           :`<rect x="212" y="84" width="106" height="9" rx="3" fill="#dfe6ee" stroke="#7d8a99" stroke-width="2"/>`;
+    if(s.soapLid&&!open)o+=`<ellipse cx="262" cy="82" rx="16" ry="3" fill="#fff" stroke="#9fb3c6"/>`;
+    // かご
+    o+=`<polygon points="336,186 396,186 389,222 343,222" fill="#e8cfa0" stroke="#b99a6e" stroke-width="2"/>`;
+    if(!s.clothes)o+=`<rect x="344" y="176" width="22" height="14" rx="4" fill="#8cc0e8"/><rect x="362" y="174" width="22" height="16" rx="4" fill="#f2b880"/><rect x="354" y="180" width="18" height="10" rx="3" fill="#e8806a"/>`;
+    if(fx){
+      const id=fx.id;
+      if(id==='soap'){
+        o+=`<rect x="236" y="34" width="28" height="22" rx="3" fill="#bfe0f2" stroke="#7ab6e8" stroke-width="2" transform="rotate(35 250 45)"/>
+          <circle class="fall" cx="262" cy="62" r="3" fill="#fff" stroke="#9fb3c6"/><circle class="fall fall2" cx="266" cy="66" r="3" fill="#fff" stroke="#9fb3c6"/><circle class="fall fall3" cx="258" cy="66" r="3" fill="#fff" stroke="#9fb3c6"/>`;
+        o+=fxText(fx.ok?'サラサラ':'あっ…！',200,34);
+      }else if(id==='start'){
+        if(!fx.ok&&s.splash)o+=`<path d="M230 80 l-12 -14 M265 76 v-18 M300 80 l12 -14" stroke="#7ab6e8" stroke-width="4" stroke-linecap="round"/>`;
+        o+=fxText(fx.ok?'ぐるぐる…ピーッ':'ぐるぐる…',200,34);
+      }else if(id==='put'){
+        o+=fxText(fx.ok?'ポイッ':'ゴツン',200,34);
+      }else if(id==='hang'){
+        o+=fxText(fx.ok?'パンパン！':'あれれ？',200,34);
+      }else if(id==='open'||id==='close'){
+        o+=fxText(id==='open'?'パカッ':'パタン',200,34);
+      }
+    }
+    return o;
+  },
+  cards:[
+    {id:'start',label:'スタートを {押|お}す',run:s=>{
+      if(s.lid!=='しまっている'){s.splash=true;return{ok:false,msg:'ふたが {開|あ}いていて、{水|みず}が とびちった！'};}
+      if(!s.clothes)return{ok:false,msg:'からっぽのまま、ぐるぐる {回|まわ}っているよ…。'};
+      if(!s.soap)return{ok:false,msg:'せんざいが ないから、よごれが おちなかったよ。'};
+      s.washed=true;return{ok:true,msg:'ぐるぐる…ピーッ！せんたくが おわったよ。'};}},
+    {id:'soap',label:'せんざいを {入|い}れる',run:s=>{
+      if(s.lid!=='あいている'){s.soapLid=true;return{ok:false,msg:'ふたの {上|うえ}に せんざいが こぼれちゃった！'};}
+      s.soap=true;return{ok:true,msg:'せんざいを {入|い}れたよ。'};}},
+    {id:'hang',label:'ほす',run:s=>{
+      if(!s.clothes)return{ok:false,msg:'かごの {中|なか}の よごれた ふくを、そのまま ほそうと しちゃった！'};
+      if(s.lid!=='あいている')return{ok:false,msg:'ふたが {閉|し}まっていて、とりだせないよ。'};
+      if(!s.washed)return{ok:false,msg:'まだ {洗|あら}っていない ふくを ほそうと しちゃった！'};
+      s.hung=true;return{ok:true,msg:'せんたくものを ほしたよ。いい においだね。'};}},
+    {id:'close',label:'ふたを {閉|し}める',run:s=>{
+      s.lid='しまっている';return{ok:true,msg:'ふたを {閉|し}めたよ。'};}},
+    {id:'put',label:'せんたくものを {入|い}れる',run:s=>{
+      if(s.lid!=='あいている')return{ok:false,msg:'ふたが {閉|し}まっていて、{入|い}れられないよ！'};
+      s.clothes=true;return{ok:true,msg:'せんたくものを {入|い}れたよ。'};}},
+    {id:'open',label:'ふたを {開|あ}ける',run:s=>{
+      s.lid='あいている';return{ok:true,msg:'ふたを {開|あ}けたよ。'};}}
+  ],
+  done:s=>s.hung,
+  notDone:'さいごまで やったけど、まだ おわっていないみたい。'
+}
+];
+
+/* ---------- 状態 ---------- */
+let stage=null, state=null, program=[], tries=0;
+let running=false, runIdx=0, runTimer=0, prevView=[], runId=0;
+let face='normal', fx=null, pose='rest', actT=99, bounceT=0;
+let marks=null;
+
+const $=id=>document.getElementById(id);
+function show(id){document.querySelectorAll('.screen').forEach(e=>e.classList.toggle('show',e.id===id));}
+
+/* ---------- 場面を描く ---------- */
+function renderScene(){
+  if(!stage)return;
+  const hand=stage.hand?stage.hand(state):'';
+  let fxSvg='';
+  // いらないカードの動作の絵
+  if(fx&&fx.extra){const c=EXTRA_CARDS.find(c=>c.id===fx.id);if(c&&c.fx)fxSvg=c.fx();}
+  $('scene').innerHTML=stage.draw(state,fx&&!fx.extra?fx:null)
+    +`<g transform="translate(${RB_X},${RB_Y})">${robotSVG(face,hand)}</g>`+fxSvg;
+}
+
+/* ---------- スタート画面 ---------- */
+function buildStart(){
+  const list=$('stageList');list.innerHTML='';
+  STAGES.forEach((st,i)=>{
+    const b=document.createElement('button');b.className='stageBtn';
+    b.innerHTML=`<div class="num">ステージ ${i+1}</div><div class="name">${r(st.title)}</div><div class="clear">${cleared[st.id]?'できたよ ✓':''}</div>`;
+    b.addEventListener('click',()=>{unlockAudio();sndTap();startStage(i);});
+    list.appendChild(b);
+  });
+  document.querySelectorAll('.seg').forEach(seg=>{
+    const key=seg.dataset.key;
+    seg.querySelectorAll('button').forEach(btn=>btn.classList.toggle('on',settings[key]===btn.dataset.v));
+  });
+}
+document.querySelectorAll('.seg').forEach(seg=>{
+  seg.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      unlockAudio();
+      settings[seg.dataset.key]=btn.dataset.v;save();buildStart();sndTap();
+    });
+  });
+});
+
+/* ---------- 活動画面 ---------- */
+let stageIndex=0;
+function startStage(i){
+  stageIndex=i;stage=STAGES[i];program=[];tries=0;
+  resetRun();
+  $('stageTitle').innerHTML='ステージ '+(i+1)+'：'+r(stage.title);
+  $('goalText').innerHTML=r(stage.goal);
+  buildPalette();renderProg();
+  setBubble('よろしくね。カードで おねがいしてね。','');
+  setMsg('','');
+  updateTry();
+  show('play');
+}
+function allCards(){return settings.extra==='on'?stage.cards.concat(EXTRA_CARDS):stage.cards;}
+function findCard(id){return stage.cards.find(c=>c.id===id)||EXTRA_CARDS.find(c=>c.id===id);}
+function buildPalette(){
+  const pl=$('palList');pl.innerHTML='';
+  allCards().forEach(c=>{
+    const b=document.createElement('button');b.className='cardBtn';b.innerHTML=r(c.label);
+    b.addEventListener('click',()=>{
+      unlockAudio();
+      if(running)return;
+      if(program.length>=10){setMsg('カードは 10まいまで だよ。','ng');return;}
+      clearMarks();
+      program.push(c.id);sndTap();renderProg();
+      const l=$('progList');l.scrollTop=l.scrollHeight;
+    });
+    pl.appendChild(b);
+  });
+}
+function renderProg(){
+  const pl=$('progList');pl.innerHTML='';
+  if(program.length===0)pl.innerHTML='<div class="empty">'+r('まだ カードが ないよ。<br>{下|した}の カードを タップしてね。')+'</div>';
+  program.forEach((id,i)=>{
+    const c=findCard(id);
+    const d=document.createElement('div');d.className='pCard';d.dataset.i=i;
+    const m=marks&&marks[i];
+    if(m)d.classList.add(m);
+    const markTxt=m==='fail'?'<span class="mark">ここで うまく いかなかったよ</span>'
+      :m==='done'?'<span class="mark" style="color:var(--ok)">できた</span>':'';
+    d.innerHTML=`<span class="grip">⋮⋮</span><span class="no">${i+1}</span><span class="txt">${r(c.label)}</span>${markTxt||(running?'':'<span class="del">けす</span>')}`;
+    setupDrag(d,i);
+    pl.appendChild(d);
+  });
+  // うごいているカードが見えるように一覧をスクロール
+  const cur=pl.querySelector('.pCard.now,.pCard.fail');
+  if(cur){const lr=pl.getBoundingClientRect(),cr=cur.getBoundingClientRect();
+    if(cr.top<lr.top||cr.bottom>lr.bottom)pl.scrollTop+=cr.top-lr.top-lr.height/2+cr.height/2;}
+  $('progCnt').textContent=program.length+' まい';
+  $('clearBtn').disabled=running||program.length===0;
+}
+
+/* ---------- ならべかえ（ドラッグ）とタップでけす ---------- */
+let drag=null;
+function setupDrag(el,i){
+  el.addEventListener('pointerdown',e=>{
+    if(running||drag)return;
+    unlockAudio();
+    const rc=el.getBoundingClientRect();
+    drag={el,i,sx:e.clientX,sy:e.clientY,ox:e.clientX-rc.left,oy:e.clientY-rc.top,moved:false,ghost:null,id:e.pointerId};
+    e.preventDefault();
+  });
+}
+// うごきと はなしたときは window で受ける（DOMの入れかえでイベントが切れないように）
+window.addEventListener('pointermove',e=>{
+  if(!drag||e.pointerId!==drag.id)return;
+  const el=drag.el;
+  if(!drag.moved){
+    if(Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<8)return;
+    drag.moved=true;
+    const rc=el.getBoundingClientRect();
+    const g=el.cloneNode(true);g.classList.remove('pCard');g.classList.add('pCard-ghost','ghost');
+    g.style.cssText+=';display:flex;align-items:center;gap:8px;border:2px solid var(--main);border-radius:10px;padding:4px 8px;min-height:46px;font-size:18px;line-height:1.7;width:'+rc.width+'px';
+    document.body.appendChild(g);drag.ghost=g;
+    el.classList.add('dragging');
+    clearMarks();
+  }
+  drag.ghost.style.left=(e.clientX-drag.ox)+'px';
+  drag.ghost.style.top=(e.clientY-drag.oy)+'px';
+  // 入れる場所を決める
+  const list=$('progList');
+  const others=[...list.querySelectorAll('.pCard')].filter(x=>x!==el);
+  let before=null;
+  for(const o of others){const rc=o.getBoundingClientRect();if(e.clientY<rc.top+rc.height/2){before=o;break;}}
+  if(before){if(el.nextElementSibling!==before)list.insertBefore(el,before);}
+  else if(list.lastElementChild!==el)list.appendChild(el);
+  // はしに来たら一覧をスクロール
+  const lr=list.getBoundingClientRect();
+  if(e.clientY<lr.top+30)list.scrollTop-=8;
+  else if(e.clientY>lr.bottom-30)list.scrollTop+=8;
+});
+function endDrag(e,cancel){
+  if(!drag||e.pointerId!==drag.id)return;
+  const d=drag;drag=null;
+  if(d.ghost)d.ghost.remove();
+  if(d.moved){
+    program=[...$('progList').querySelectorAll('.pCard')].map(x=>program[+x.dataset.i]);
+    sndTap();renderProg();
+  }else if(!cancel&&d.el.contains(e.target)){
+    clearMarks();
+    program.splice(d.i,1);sndTap();renderProg();
+  }else renderProg();
+}
+window.addEventListener('pointerup',e=>endDrag(e,false));
+window.addEventListener('pointercancel',e=>endDrag(e,true));
+
+function clearMarks(){
+  if(marks){
+    marks=null;setMsg('','');
+    // 場面ももとにもどす
+    state=stage.init();fx=null;face='normal';prevView=[];renderState();renderScene();
+    if(!drag)renderProg();
+  }
+}
+function setBubble(t,cls){const b=$('bubble');b.innerHTML=r(t);b.className='bubble'+(cls?' '+cls:'');}
+function setMsg(t,cls){const m=$('msg');m.innerHTML=r(t);m.className=cls||'';}
+function updateTry(){$('tryCount').textContent=tries>0?tries+'かいめ':'';}
+function renderState(){
+  const v=stage.view(state);
+  $('stateBox').innerHTML=v.map((t,i)=>`<span class="chip${prevView.length&&prevView[i]!==t?' changed':''}">${r(t)}</span>`).join('');
+  prevView=v;
+}
+function resetRun(){
+  runId++;
+  running=false;runIdx=0;runTimer=0;marks=null;fx=null;pose='rest';actT=99;
+  state=stage.init();prevView=[];renderState();
+  face='normal';renderScene();
+  const rb=$('runBtn');rb.textContent='うごかす';rb.classList.remove('stop');
+}
+
+$('runBtn').addEventListener('click',()=>{
+  unlockAudio();
+  if(running){ // とめる
+    resetRun();renderProg();
+    setBubble('とまったよ。','');setMsg('','');
+    return;
+  }
+  if(program.length===0){setMsg('カードを ならべてから {押|お}してね。','ng');return;}
+  tries++;updateTry();
+  runId++;
+  state=stage.init();prevView=[];renderState();fx=null;
+  running=true;runIdx=0;marks=program.map(()=>null);
+  const rb=$('runBtn');rb.textContent='とめる';rb.classList.add('stop');
+  setMsg('ロボットが うごいているよ…','');
+  setBubble('いくよ！','');
+  face='work';renderScene();
+  renderProg();
+  runTimer=stepInterval()*0.5;
+});
+$('clearBtn').addEventListener('click',()=>{
+  unlockAudio();
+  if(running)return;
+  program=[];sndTap();clearMarks();renderProg();setMsg('','');
+});
+$('backBtn').addEventListener('click',()=>{
+  unlockAudio();
+  resetRun();buildStart();show('start');
+});
+
+function stepInterval(){return settings.speed==='slow'?2.4:1.5;}
+
+function doStep(){
+  const c=findCard(program[runIdx]);
+  for(let k=0;k<runIdx;k++)marks[k]='done';
+  marks[runIdx]='now';
+  const res=c.run(state);
+  fx={id:c.id,ok:res.ok,extra:!!c.extra};
+  pose=c.pose||'reach';actT=0;bounceT=0.35;
+  renderState();
+  if(!res.ok){
+    marks[runIdx]='fail';
+    running=false;
+    face='sad';renderScene();
+    setBubble(res.msg,'ng');
+    setMsg('うまく いかなかったよ。カードを なおして、もういちど うごかしてみてね。','ng');
+    sndNg();
+    const rb=$('runBtn');rb.textContent='うごかす';rb.classList.remove('stop');
+    renderProg();
+    return;
+  }
+  face=c.face||'work';renderScene();
+  setBubble(res.msg,'');
+  sndStep();
+  renderProg();
+  runIdx++;
+  if(runIdx>=program.length){
+    const id=runId;
+    setTimeout(()=>{if(id===runId&&running)finishRun();},Math.min(1600,stepInterval()*700));
+  }
+}
+function finishRun(){
+  if(!stage)return;
+  running=false;
+  for(let k=0;k<marks.length;k++)if(marks[k]!=='fail')marks[k]='done';
+  const rb=$('runBtn');rb.textContent='うごかす';rb.classList.remove('stop');
+  if(stage.done(state)){
+    face='happy';fx=null;pose='rest';renderScene();
+    setBubble('ぜんぶ できたよ！ありがとう。','ok');
+    setMsg('せいこう！','ok');
+    renderProg();
+    sndOk();
+    cleared[stage.id]=true;save();
+    const id=runId;
+    setTimeout(()=>{if(id===runId)showResult();},1600);
+  }else{
+    face='sad';renderScene();
+    setBubble(stage.notDone,'ng');
+    setMsg('カードが たりないみたい。つづきの カードを たしてみてね。','ng');
+    renderProg();
+    sndNg();
+  }
+}
+
+/* ---------- 結果画面 ---------- */
+function showResult(){
+  $('resRobot').innerHTML=robotSVG('happy','');
+  const usedExtra=program.some(id=>EXTRA_CARDS.find(c=>c.id===id));
+  let info='「'+r(stage.title)+'」 クリア！<br>'+tries+'かいめで せいこう ／ カード '+program.length+'まい';
+  if(settings.extra==='on'&&!usedExtra)info+='<br>いらない カードを つかわずに できたね。';
+  $('resInfo').innerHTML=info;
+  const box=$('resBtns');box.innerHTML='';
+  const addBtn=(label,cls,fn)=>{
+    const b=document.createElement('button');b.innerHTML=label;if(cls)b.className=cls;
+    b.addEventListener('click',()=>{unlockAudio();sndTap();fn();});box.appendChild(b);
+  };
+  if(stageIndex<STAGES.length-1)addBtn('つぎの ステージへ','primary',()=>startStage(stageIndex+1));
+  addBtn('もういちど','',()=>startStage(stageIndex));
+  addBtn('ステージを えらぶ','',()=>{buildStart();show('start');});
+  show('result');
+}
+
+/* ---------- ロボットのうごき（デルタタイム方式） ---------- */
+const ANG={rest:8,reach:-78,mouth:146};
+let last=performance.now(), t=0;
+function ease(x){return x<0?0:x>1?1:x*x*(3-2*x);}
+function loop(now){
+  let dt=(now-last)/1000;last=now;
+  if(dt>1/30)dt=1/30;
+  if(dt<0)dt=0;
+  const dtScale=dt*60; // 60fps を 1 とする
+  t+=dt;
+  if(running){
+    runTimer+=dt;
+    if(runTimer>=stepInterval()&&runIdx<program.length){runTimer=0;doStep();}
+  }
+  actT+=dt;
+  if(bounceT>0)bounceT=Math.max(0,bounceT-dt);
+
+  const sc=$('scene');
+  const bob=sc.querySelector('.rbBob');
+  if(bob){
+    // うでの角度：のばす→しばらくそのまま→もどす
+    const hold=stepInterval()*0.55;
+    let k=actT<0.35?ease(actT/0.35):actT<hold?1:1-ease((actT-hold)/0.35);
+    let ang;
+    if(pose==='dance'&&actT<hold+0.35)ang=-30+Math.sin(t*9)*45;
+    else ang=ANG.rest+((ANG[pose]!==undefined?ANG[pose]:ANG.rest)-ANG.rest)*k;
+    const arm=sc.querySelector('.armR');
+    if(arm)arm.setAttribute('transform',`rotate(${ang.toFixed(1)} 100 114)`);
+    const armL=sc.querySelector('.armL');
+    if(armL){
+      const a=pose==='dance'&&actT<hold+0.35?Math.sin(t*9+1)*40:Math.sin(t*1.5)*3;
+      armL.setAttribute('transform',`rotate(${a.toFixed(1)} 30 114)`);
+    }
+    // 足ぶみ（うごき始めだけ）
+    const walk=actT<0.6&&pose!=='rest'?Math.sin(actT*22)*4:0;
+    const lL=sc.querySelector('.legL'),lR=sc.querySelector('.legR');
+    if(lL)lL.setAttribute('transform',`translate(0,${Math.min(0,walk).toFixed(1)})`);
+    if(lR)lR.setAttribute('transform',`translate(0,${Math.min(0,-walk).toFixed(1)})`);
+    // ゆらゆら・ぴょん
+    let y=Math.sin(t*2)*1.5;
+    if(bounceT>0)y-=Math.sin((0.35-bounceT)/0.35*Math.PI)*6;
+    if(face==='happy')y-=Math.abs(Math.sin(t*5))*6;
+    bob.setAttribute('transform',`translate(0,${y.toFixed(2)})`);
+  }
+  const rb=$('resRobot').querySelector('.rbBob');
+  if(rb&&$('result').classList.contains('show')){
+    rb.setAttribute('transform',`translate(0,${(-Math.abs(Math.sin(t*3))*8+4).toFixed(2)})`);
+    const a=rb.querySelector('.armR');
+    if(a)a.setAttribute('transform',`rotate(${(-150+Math.sin(t*8)*20).toFixed(1)} 100 114)`);
+  }
+  void dtScale;
+  requestAnimationFrame(loop);
+}
+
+/* ---------- ズーム・意図しない動作の防止 ---------- */
+document.addEventListener('gesturestart',e=>e.preventDefault());
+let lastTouch=0;
+document.addEventListener('touchend',e=>{
+  const now=Date.now();
+  if(now-lastTouch<300)e.preventDefault();
+  lastTouch=now;
+},{passive:false});
+document.addEventListener('touchmove',e=>{
+  if(drag){e.preventDefault();return;}
+  if(e.target.closest&&e.target.closest('#progList,#start'))return; // 一覧とスタート画面はスクロールできる
+  e.preventDefault();
+},{passive:false});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+/* ---------- 開始 ---------- */
+load();buildStart();
+stage=STAGES[0];state=stage.init();
+requestAnimationFrame(t0=>{last=t0;requestAnimationFrame(loop);});
+</script>
+</body>
+</html>
