@@ -136,7 +136,7 @@ rt{font-size:.55em;font-weight:400}
 .clear-inner p{font-size:21px;margin:0;color:var(--sub);line-height:1.9}
 #clearChar{width:150px;height:150px}
 
-#toast{position:fixed;left:50%;top:74px;transform:translateX(-50%);background:rgba(43,52,65,.92);color:#fff;padding:10px 20px;border-radius:14px;
+#toast{position:fixed;left:50%;bottom:230px;transform:translateX(-50%);background:rgba(43,52,65,.92);color:#fff;padding:10px 20px;border-radius:14px;
   font-size:18px;line-height:1.8;z-index:60;opacity:0;pointer-events:none;transition:opacity .25s;max-width:90%;text-align:center}
 #toast.on{opacity:1}
 
@@ -168,6 +168,7 @@ rt{font-size:.55em;font-weight:400}
   .ins{height:50px}
   .palette{padding:5px 8px 6px;gap:6px}
   .card{padding:14px 18px}
+  #toast{bottom:150px;font-size:15px}
   .rbig{font-size:30px}
   .rchar{width:80px;height:80px}
   .card p{font-size:17px}
@@ -198,6 +199,7 @@ rt{font-size:.55em;font-weight:400}
   .blk svg{width:24px;height:24px}
   .blk .prm{font-size:10px;max-width:52px}
   .palette{gap:8px}
+  #toast{bottom:240px}
 }
 </style>
 </head>
@@ -220,6 +222,13 @@ rt{font-size:.55em;font-weight:400}
       <div class="setrow"><span class="setlbl">はやさ</span>
         <div class="seg" id="segSpeed">
           <button data-v="1">ゆっくり</button><button data-v="2">ふつう</button><button data-v="3">はやい</button>
+        </div></div>
+      <div class="setrow"><span class="setlbl">マス</span>
+        <div class="seg" id="segGrid">
+          <button data-v="auto">レベルに あわせる<small>1:6×4　2:8×5　3:10×6</small></button>
+          <button data-v="s">せまい<small>6×4</small></button>
+          <button data-v="m">ふつう<small>8×5</small></button>
+          <button data-v="l">ひろい<small>10×6</small></button>
         </div></div>
       <div class="setrow"><span class="setlbl"><ruby>音<rt>おと</rt></ruby></span>
         <div class="seg" id="segSound">
@@ -306,7 +315,7 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
 };
-const settings = Object.assign({ level: 1, speed: 2, sound: true }, store.get('piyoprog-settings', {}));
+const settings = Object.assign({ level: 1, speed: 2, sound: true, grid: 'auto' }, store.get('piyoprog-settings', {}));
 const saveSettings = () => store.set('piyoprog-settings', settings);
 
 /* ================= アイコン ================= */
@@ -357,7 +366,10 @@ const SIZES = { big: 'おおきく', small: 'ちいさく', normal: 'もとに �
 const SIZE_SHORT = { big: 'おおきく', small: 'ちいさく', normal: 'もとに' };
 const SOUNDS = { pi: 'ピッ', poron: 'ポロン', don: 'ドン', doremi: 'ドレミ' };
 const CHARS = { piyo: 'ぴよ', neko: 'ねこ', robo: 'ロボ' };
-const COLS = 6, ROWS = 4;
+let COLS = 6, ROWS = 4;
+const GRIDS = { s: [6, 4], m: [8, 5], l: [10, 6] };
+const LEVEL_GRID = { 1: 's', 2: 'm', 3: 'l' };
+function setGrid(key) { [COLS, ROWS] = GRIDS[key] || GRIDS.s; }
 
 function prmText(b) {
   switch (b.type) {
@@ -553,7 +565,7 @@ function onTap(el, fn) {
 let toastTimer = 0;
 function toast(html) {
   const t = $('toast'); t.innerHTML = html; t.classList.add('on');
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 2200);
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 1800);
 }
 
 /* ================= アニメーション（デルタタイム方式） ================= */
@@ -773,7 +785,7 @@ function addBlock(t) {
     const id = 'L' + Date.now().toString(36) + Math.floor(Math.random() * 1000);
     S.prog.splice(pos, 0, { type: 'loopStart', id }, { type: 'loopEnd', id, p: BDEF.loopEnd.def });
     S.cursor = pos + 1;
-    toast('これから ならべる ブロックは、くりかえしの なかに はいるよ。<br>そとに ならべたいときは、れつの あいている ところを タップしてね');
+    toast('ブロックは オレンジの せんの なかに ならぶよ');
   } else {
     S.prog.splice(pos, 0, { type: t, p: BDEF[t].def });
     if (S.cursor != null) S.cursor = pos + 1;
@@ -988,6 +1000,7 @@ function startGame(mode) {
 function loadTask() {
   stopRun();
   const t = TASKS[S.level][S.taskIdx];
+  setGrid('s');   // おだいは 6×4 で つくってある
   S.prog = []; S.cursor = null; S.start = t.start.slice(); S.goal = t.goal; S.char = 'piyo'; S.bg = 'white';
   S.palette = t.pal; S.selected = -1;
   $('gTitle').textContent = `レベル${S.level}　おだい ${S.taskIdx + 1} / ${TASKS[S.level].length}`;
@@ -999,17 +1012,19 @@ function loadTask() {
 }
 function loadFree() {
   stopRun();
+  setGrid(settings.grid === 'auto' ? LEVEL_GRID[S.level] : settings.grid);
   const sv = store.get('piyoprog-free-' + S.level, null) || {};
   const pal = LEVEL_PALETTE[S.level];
   const ok = t => t !== 'repeat' && (pal.includes(t) || (pal.includes('repeat') && (t === 'loopStart' || t === 'loopEnd')));
   S.prog = Array.isArray(sv.prog) ? sv.prog.filter(b => b && ok(b.type)) : [];
   if (!validLoops(S.prog)) S.prog = S.prog.filter(b => b.type !== 'loopStart' && b.type !== 'loopEnd');
   S.cursor = null;
-  S.start = Array.isArray(sv.start) && sv.start[0] >= 0 && sv.start[0] < COLS && sv.start[1] >= 0 && sv.start[1] < ROWS ? sv.start : [1, 2];
+  S.start = Array.isArray(sv.start) && sv.start[0] >= 0 && sv.start[1] >= 0
+    ? [Math.min(COLS - 1, sv.start[0]), Math.min(ROWS - 1, sv.start[1])] : [1, Math.floor(ROWS / 2)];
   S.char = CHARS[sv.char] ? sv.char : 'piyo';
   S.bg = BGS[sv.bg] ? sv.bg : 'white';
   S.goal = null; S.palette = pal; S.selected = -1;
-  $('gTitle').textContent = `じゆうに つくる（レベル${S.level}）`;
+  $('gTitle').textContent = `じゆうに つくる（レベル${S.level}・${COLS}×${ROWS}マス）`;
   $('taskbar').className = 'taskbar free';
   $('taskText').innerHTML = `ブロックを ならべて「うごかす」を おしてね。ステージを タップすると、スタートの ばしょが かわるよ`;
   $('hintText').classList.remove('on');
@@ -1034,6 +1049,8 @@ function initHome() {
   syncSeg('segLevel', settings.level);
   syncSeg('segSpeed', settings.speed);
   syncSeg('segSound', settings.sound ? 1 : 0);
+  syncSeg('segGrid', settings.grid);
+  $('segGrid').querySelectorAll('button').forEach(b => onTap(b, () => { settings.grid = b.dataset.v; saveSettings(); syncSeg('segGrid', settings.grid); }));
   $('segLevel').querySelectorAll('button').forEach(b => onTap(b, () => { settings.level = Number(b.dataset.v); saveSettings(); syncSeg('segLevel', settings.level); }));
   $('segSpeed').querySelectorAll('button').forEach(b => onTap(b, () => { settings.speed = Number(b.dataset.v); saveSettings(); syncSeg('segSpeed', settings.speed); }));
   $('segSound').querySelectorAll('button').forEach(b => onTap(b, () => { settings.sound = b.dataset.v === '1'; saveSettings(); syncSeg('segSound', settings.sound ? 1 : 0); }));
