@@ -80,8 +80,8 @@ input{-webkit-user-select:text;user-select:text}
 .desc{font-size:14px;line-height:2;text-align:center;margin-top:4px}
 
 /* カードを作るまど */
-#modal{position:fixed;inset:0;background:rgba(30,40,55,.45);display:none;align-items:center;justify-content:center;z-index:10;padding:14px}
-#modal.on{display:flex}
+#modal,#dmodal{position:fixed;inset:0;background:rgba(30,40,55,.45);display:none;align-items:center;justify-content:center;z-index:10;padding:14px}
+#modal.on,#dmodal.on{display:flex}
 .sheet{background:#fff;border-radius:18px;width:min(660px,100%);max-height:100%;display:flex;flex-direction:column;overflow:hidden}
 .sheet .body{overflow:auto;padding:12px 16px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
 #preview{background:#f6f8fb;border-radius:14px;padding:14px 8px 6px}
@@ -147,6 +147,18 @@ input{-webkit-user-select:text;user-select:text}
   .big{font-size:17px}
   .opt{font-size:14px}
 }
+#mDel,#dDel{background:#fde8e6;color:#c0392b;padding:0 16px}
+#dCancel{padding:0 18px}
+#dOk{background:#2f6fd6;color:#fff;padding:0 22px}
+.dwrap{display:flex;justify-content:center}
+#dcv{width:min(240px,42vh);height:min(240px,42vh);background:#fff;border:3px solid #cfd8e3;border-radius:12px;touch-action:none}
+.sw{width:44px;height:44px;border:3px solid #dde3ea;font-size:22px;padding:0}
+.sw.sel{border-color:#2b3440}
+.pal.draw{font-size:13px;line-height:1.3;border-style:dashed;color:#2f6fd6}
+@media (orientation:landscape) and (max-height:500px),(orientation:portrait) and (max-width:500px){
+  .pal.draw{font-size:10px}
+  #dcv{width:min(200px,38vh);height:min(200px,38vh)}
+}
 </style>
 </head>
 <body>
@@ -156,7 +168,7 @@ input{-webkit-user-select:text;user-select:text}
   <div class="startIn">
     <h1 class="title">プログラミックス２</h1>
     <ol class="how">
-      <li>マスを タッチして、えを おく</li>
+      <li>マスを タッチして、えを おく（じぶんで えを かくことも できるよ）</li>
       <li>「きまりカード」で、いつ・だれが・どうなるかを きめる</li>
       <li>「スタート」を おすと、えが <ruby>動<rt>うご</rt></ruby>きだすよ</li>
     </ol>
@@ -222,6 +234,24 @@ input{-webkit-user-select:text;user-select:text}
   </div>
 </div>
 
+<!-- えを かくまど -->
+<div id="dmodal">
+  <div class="sheet">
+    <div class="body scroll" id="dBody">
+      <div class="sec"><h3>どの えに する？</h3><div class="opts" id="dSlots"></div></div>
+      <div class="dwrap"><canvas id="dcv" width="256" height="256"></canvas></div>
+      <div class="sec"><h3>いろ</h3><div class="opts" id="dColors"></div></div>
+      <div class="sec"><h3>ペン</h3><div class="opts" id="dTools"></div></div>
+    </div>
+    <div class="foot">
+      <button id="dDel">この えを すてる</button>
+      <div class="sp"></div>
+      <button id="dCancel">やめる</button>
+      <button id="dOk">けってい</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -243,14 +273,18 @@ document.addEventListener('touchmove',e=>{
 
 /* ---- データ ---- */
 const COLS=10, ROWS=7;
-const CHARS=[
+const BASE=[
   {id:'car',name:'くるま'},
   {id:'apple',name:'りんご'},
   {id:'coin',name:'コイン'},
   {id:'fish',name:'さかな'},
   {id:'wall',name:'かべ'}
 ];
-const NAME=Object.fromEntries(CHARS.map(c=>[c.id,c.name]));
+const CUSTOM_IDS=['e1','e2','e3','e4'];
+const CUSTOM_NAME={e1:'えA',e2:'えB',e3:'えC',e4:'えD'};
+const imgCache={};
+function chars(){return BASE.concat(CUSTOM_IDS.filter(i=>S.custom[i]).map(i=>({id:i,name:CUSTOM_NAME[i]})));}
+function nm(id){const b=BASE.find(c=>c.id===id);if(b)return b.name;return S.custom[id]?CUSTOM_NAME[id]:null;}
 const TRIGS=[
   {id:'always',html:'ずっと',cls:'t-always'},
   {id:'touch',html:'タッチしたら',cls:'t-touch'},
@@ -264,6 +298,7 @@ const ACTIONS=[
   {id:'up',    html:'<ruby>上<rt>うえ</rt></ruby>へ1マス', dx:0,dy:-1,arrow:'↑'},
   {id:'down',  html:'<ruby>下<rt>した</rt></ruby>へ1マス', dx:0,dy:1,arrow:'↓'},
   {id:'random',html:'どこかへ1マス',arrow:'？'},
+  {id:'stop',  html:'とまる',arrow:'■'},
   {id:'change',html:'ほかのものに <ruby>変<rt>か</rt></ruby>わる'},
   {id:'vanish',html:'<ruby>消<rt>き</rt></ruby>える'},
   {id:'plus',  html:'★が1こ ふえる'},
@@ -272,7 +307,7 @@ const ACTIONS=[
 const ACT=Object.fromEntries(ACTIONS.map(a=>[a.id,a]));
 const MOVES=['right','left','up','down','random'];
 
-const S={rules:[],layout:[],speed:2,goal:5,sound:true};
+const S={rules:[],layout:[],speed:2,goal:5,sound:true,custom:{}};
 const KEY='kimariCard_v1';
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 function load(){try{const t=localStorage.getItem(KEY);return t?JSON.parse(t):null;}catch(e){return null;}}
@@ -280,6 +315,7 @@ function load(){try{const t=localStorage.getItem(KEY);return t?JSON.parse(t):nul
 /* ---- えをかく ---- */
 function drawChar(ctx,id,x,y,s){
   ctx.save();ctx.translate(x,y);const u=s/100;ctx.scale(u,u);ctx.lineJoin='round';ctx.lineCap='round';
+  if(CUSTOM_IDS.indexOf(id)>=0){const im=imgCache[id];if(im)ctx.drawImage(im,-46,-46,92,92);ctx.restore();return;}
   const circle=(cx,cy,r)=>{ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();};
   const rr=(x0,y0,w,h,r)=>{ctx.beginPath();ctx.moveTo(x0+r,y0);ctx.arcTo(x0+w,y0,x0+w,y0+h,r);ctx.arcTo(x0+w,y0+h,x0,y0+h,r);ctx.arcTo(x0,y0+h,x0,y0,r);ctx.arcTo(x0,y0,x0+w,y0,r);ctx.closePath();ctx.fill();};
   switch(id){
@@ -328,11 +364,11 @@ function charCanvas(id,size){
 /* ---- カードの見た目 ---- */
 function desc(r){
   let h;
-  if(r.trigger==='always') h=`${NAME[r.a]}は ずっと、`;
-  else if(r.trigger==='touch') h=`${NAME[r.a]}を タッチしたら、`;
-  else h=`${NAME[r.a]}が ${NAME[r.b]}に ぶつかったら、`;
+  if(r.trigger==='always') h=`${nm(r.a)}は ずっと、`;
+  else if(r.trigger==='touch') h=`${nm(r.a)}を タッチしたら、`;
+  else h=`${nm(r.a)}が ${nm(r.b)}に ぶつかったら、`;
   if(MOVES.includes(r.action)) h+=ACT[r.action].html+' '+MOVE;
-  else if(r.action==='change') h+=`${NAME[r.to]}に <ruby>変<rt>か</rt></ruby>わる`;
+  else if(r.action==='change') h+=`${nm(r.to)}に <ruby>変<rt>か</rt></ruby>わる`;
   else h+=ACT[r.action].html;
   return h;
 }
@@ -355,6 +391,7 @@ function cardVisual(r,size){
   const after=makeBox('あと',size,hit);
   const badge=(txt,cls)=>{const g=document.createElement('div');g.className='badge'+(cls?' '+cls:'');g.textContent=txt;after.appendChild(g);};
   if(MOVES.includes(r.action)){after.appendChild(charCanvas(r.a,s2));badge(ACT[r.action].arrow);}
+  else if(r.action==='stop'){after.appendChild(charCanvas(r.a,s2));badge(ACT.stop.arrow,'sb minus');}
   else if(r.action==='change'){after.appendChild(charCanvas(r.to,s2));}
   else if(r.action==='vanish'){const sp=document.createElement('div');sp.className='gone';sp.style.width=s2*0.8+'px';sp.style.height=s2*0.8+'px';sp.style.margin=s2*0.1+'px';after.appendChild(sp);}
   else {after.appendChild(charCanvas(r.a,s2));badge(r.action==='plus'?'★+1':'★−1',r.action==='plus'?'sb':'sb minus');}
@@ -402,9 +439,10 @@ function show(id){
 /* ---- パレット ---- */
 let tool='apple';
 function renderPalette(){
+  if(tool!=='erase'&&!nm(tool))tool='apple';
   const p=$('palette');p.innerHTML='';
   const sz=isPhone()?34:42;
-  CHARS.forEach(c=>{
+  chars().forEach(c=>{
     const b=document.createElement('button');b.className='pal'+(tool===c.id?' sel':'');
     b.appendChild(charCanvas(c.id,sz));
     const s=document.createElement('span');s.textContent=c.name;b.appendChild(s);
@@ -414,6 +452,9 @@ function renderPalette(){
   const e=document.createElement('button');e.className='pal erase'+(tool==='erase'?' sel':'');e.textContent='けす';
   e.onclick=()=>{tool='erase';renderPalette();};
   p.appendChild(e);
+  const w=document.createElement('button');w.className='pal draw';w.innerHTML='＋<br>えを かく';
+  w.onclick=openDraw;
+  p.appendChild(w);
 }
 
 /* ---- カード一覧 ---- */
@@ -439,7 +480,7 @@ function openEditor(i){
   renderEditor();
   $('modal').classList.add('on');
 }
-function otherChar(id){return CHARS.find(c=>c.id!==id).id;}
+function otherChar(id){return chars().find(c=>c.id!==id).id;}
 function section(title,buttons){
   const s=document.createElement('div');s.className='sec';
   const h=document.createElement('h3');h.innerHTML=title;s.appendChild(h);
@@ -457,15 +498,15 @@ function renderEditor(){
   const pv=document.createElement('div');pv.id='preview';pv.appendChild(cardVisual(draft,isPhone()?48:64));body.appendChild(pv);
   body.appendChild(section('1. いつ？',TRIGS.map(t=>optBtn(t.html,draft.trigger===t.id,()=>{
     draft.trigger=t.id;if(t.id==='hit'&&!draft.b)draft.b=otherChar(draft.a);renderEditor();}))));
-  body.appendChild(section('2. だれが？',CHARS.map(c=>optBtn(c.name,draft.a===c.id,()=>{draft.a=c.id;renderEditor();},c.id))));
+  body.appendChild(section('2. だれが？',chars().map(c=>optBtn(c.name,draft.a===c.id,()=>{draft.a=c.id;renderEditor();},c.id))));
   let n=3;
   if(draft.trigger==='hit'){
-    body.appendChild(section((n++)+'. だれに ぶつかったら？',CHARS.map(c=>optBtn(c.name,draft.b===c.id,()=>{draft.b=c.id;renderEditor();},c.id))));
+    body.appendChild(section((n++)+'. だれに ぶつかったら？',chars().map(c=>optBtn(c.name,draft.b===c.id,()=>{draft.b=c.id;renderEditor();},c.id))));
   }
   body.appendChild(section((n++)+'. どうなる？',ACTIONS.map(a=>optBtn(a.html,draft.action===a.id,()=>{
     draft.action=a.id;if(a.id==='change'&&!draft.to)draft.to=otherChar(draft.a);renderEditor();}))));
   if(draft.action==='change'){
-    body.appendChild(section((n++)+'. なにに <ruby>変<rt>か</rt></ruby>わる？',CHARS.map(c=>optBtn(c.name,draft.to===c.id,()=>{draft.to=c.id;renderEditor();},c.id))));
+    body.appendChild(section((n++)+'. なにに <ruby>変<rt>か</rt></ruby>わる？',chars().map(c=>optBtn(c.name,draft.to===c.id,()=>{draft.to=c.id;renderEditor();},c.id))));
   }
   $('mDel').style.visibility=editIdx>=0?'visible':'hidden';
   body.scrollTop=st;
@@ -542,7 +583,9 @@ function paint(p){
 /* ---- 動かす ---- */
 function move(o,dx,dy){o.x=(o.x+dx+COLS)%COLS;o.y=(o.y+dy+ROWS)%ROWS;}
 function apply(r,o){
+  if(o.stopped&&MOVES.includes(r.action))return; // とまったものは うごかない
   switch(r.action){
+    case 'stop':o.x=o.px;o.y=o.py;o.stopped=true;break; // ぶつかるまえの マスに もどって とまる
     case 'right':case 'left':case 'up':case 'down':move(o,ACT[r.action].dx,ACT[r.action].dy);break;
     case 'random':{const d=[[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random()*4)];move(o,d[0],d[1]);break;}
     case 'change':if(r.to)o.c=r.to;break;
@@ -649,7 +692,7 @@ function sample2(){
   S.layout=[{c:'car',x:0,y:3}];
   [[3,3],[6,2],[8,4],[2,1],[5,5],[7,0],[4,6]].forEach(([x,y])=>S.layout.push({c:'coin',x,y}));
   [[5,3],[2,5],[8,1]].forEach(([x,y])=>S.layout.push({c:'wall',x,y}));
-  S.rules=[R('always','car',null,'right'),R('touch','car',null,'up'),R('hit','car','coin','plus'),R('hit','coin','car','vanish'),R('hit','car','wall','minus')];
+  S.rules=[R('always','car',null,'right'),R('touch','car',null,'up'),R('hit','car','coin','plus'),R('hit','coin','car','vanish'),R('hit','car','wall','stop')];
 }
 
 /* ---- ボタン ---- */
@@ -679,11 +722,84 @@ function setupNums(){
   });
 }
 
+/* ---- じぶんの えを かく ---- */
+function setCustom(id,url,cb){const im=new Image();im.onload=()=>{imgCache[id]=im;if(cb)cb();};im.src=url;}
+function refreshAll(){
+  if($('edit').classList.contains('on')){draw();renderPalette();renderRules();}
+  if($('modal').classList.contains('on'))renderEditor();
+}
+const dcv=$('dcv'),dx=dcv.getContext('2d',{willReadFrequently:true});
+const COLORS=[['#222222','くろ'],['#e2453c','あか'],['#f2994a','オレンジ'],['#f5c518','きいろ'],['#3aa655','みどり'],['#2f6fd6','あお'],['#7a4a1f','ちゃいろ'],['#f08fb4','ピンク']];
+const WIDTHS=[['ほそい',5],['ふつう',12],['ふとい',22]];
+let dSlot='e1',dColor='#222222',dWidth=12,dEraser=false,dDrawing=false,dLast=null,dUndo=[],dDelArm=false;
+function dClear(){dx.clearRect(0,0,256,256);}
+function dPush(){dUndo.push(dx.getImageData(0,0,256,256));if(dUndo.length>12)dUndo.shift();}
+function dLoad(id){dClear();dUndo=[];if(S.custom[id]&&imgCache[id])dx.drawImage(imgCache[id],0,0,256,256);}
+function dpt(e){const r=dcv.getBoundingClientRect();return{x:(e.clientX-r.left)*256/r.width,y:(e.clientY-r.top)*256/r.height};}
+function dStroke(a,b){
+  dx.save();dx.globalCompositeOperation=dEraser?'destination-out':'source-over';
+  dx.strokeStyle=dColor;dx.lineWidth=dEraser?dWidth*1.6:dWidth;dx.lineCap='round';dx.lineJoin='round';
+  dx.beginPath();dx.moveTo(a.x,a.y);dx.lineTo(b.x+0.01,b.y);dx.stroke();dx.restore();
+}
+dcv.addEventListener('pointerdown',e=>{
+  e.preventDefault();dPush();dDrawing=true;dLast=dpt(e);dStroke(dLast,dLast);
+  try{dcv.setPointerCapture(e.pointerId);}catch(err){}
+});
+dcv.addEventListener('pointermove',e=>{if(!dDrawing)return;const p=dpt(e);dStroke(dLast,p);dLast=p;});
+const dEnd=()=>{dDrawing=false;};
+dcv.addEventListener('pointerup',dEnd);
+dcv.addEventListener('pointercancel',dEnd);
+function dRender(){
+  const sl=$('dSlots');sl.innerHTML='';
+  CUSTOM_IDS.forEach(id=>sl.appendChild(optBtn(CUSTOM_NAME[id],dSlot===id,()=>{dSlot=id;dDelArm=false;dLoad(id);dRender();},S.custom[id]?id:null)));
+  const co=$('dColors');co.innerHTML='';
+  COLORS.forEach(([c,n])=>{
+    const on=!dEraser&&dColor===c;
+    const b=document.createElement('button');b.className='sw'+(on?' sel':'');
+    b.style.background=c;b.style.color=(c==='#f5c518'||c==='#f2994a'||c==='#f08fb4')?'#222':'#fff';
+    b.setAttribute('aria-label',n);b.textContent=on?'✓':'';
+    b.onclick=()=>{dColor=c;dEraser=false;dRender();};co.appendChild(b);
+  });
+  const tl=$('dTools');tl.innerHTML='';
+  WIDTHS.forEach(([n,w])=>tl.appendChild(optBtn(n,dWidth===w,()=>{dWidth=w;dRender();})));
+  tl.appendChild(optBtn('けしゴム',dEraser,()=>{dEraser=!dEraser;dRender();}));
+  tl.appendChild(optBtn('ひとつ もどす',false,()=>{const t=dUndo.pop();if(t)dx.putImageData(t,0,0);}));
+  tl.appendChild(optBtn('ぜんぶ けす',false,()=>{dPush();dClear();}));
+  $('dDel').style.visibility=S.custom[dSlot]?'visible':'hidden';
+  $('dDel').textContent=dDelArm?'ほんとうに すてる？（カードも きえるよ）':'この えを すてる';
+}
+function openDraw(){
+  if(running)return;
+  const free=CUSTOM_IDS.find(i=>!S.custom[i]);
+  dSlot=free||'e1';dEraser=false;dDelArm=false;dDrawing=false;
+  dLoad(dSlot);dRender();$('dmodal').classList.add('on');$('dBody').scrollTop=0;
+}
+$('dCancel').onclick=()=>{dDrawing=false;$('dmodal').classList.remove('on');};
+$('dOk').onclick=()=>{
+  const d=dx.getImageData(0,0,256,256).data;let has=false;
+  for(let i=3;i<d.length;i+=4){if(d[i]>8){has=true;break;}}
+  if(!has){toast('えを かいてね');return;}
+  const id=dSlot,url=dcv.toDataURL('image/png');
+  S.custom[id]=url;save();
+  $('dmodal').classList.remove('on');
+  setCustom(id,url,()=>{tool=id;refreshAll();});
+};
+$('dDel').onclick=()=>{
+  if(!dDelArm){dDelArm=true;dRender();return;}
+  const id=dSlot;
+  delete S.custom[id];delete imgCache[id];
+  S.rules=S.rules.filter(r=>r.a!==id&&r.b!==id&&r.to!==id);
+  S.layout=S.layout.filter(o=>o.c!==id);
+  if(tool===id)tool='apple';
+  save();dDelArm=false;dLoad(id);dRender();refreshAll();toast('えを すてたよ');
+};
+
 /* ---- はじめ ---- */
 (function init(){
   const d=load();
   if(d&&typeof d==='object'){
-    const okC=id=>!!NAME[id];
+    if(d.custom&&typeof d.custom==='object')CUSTOM_IDS.forEach(id=>{const u=d.custom[id];if(typeof u==='string'&&u.indexOf('data:image/png;base64,')===0&&u.length<400000){S.custom[id]=u;setCustom(id,u,refreshAll);}});
+    const okC=id=>!!nm(id);
     if(Array.isArray(d.layout))S.layout=d.layout.filter(o=>o&&okC(o.c)&&o.x>=0&&o.x<COLS&&o.y>=0&&o.y<ROWS);
     if(Array.isArray(d.rules))S.rules=d.rules.filter(r=>r&&TRIG[r.trigger]&&ACT[r.action]&&okC(r.a)&&(r.trigger!=='hit'||okC(r.b))&&(r.action!=='change'||okC(r.to)));
     if(typeof d.speed==='number')S.speed=Math.max(1,Math.min(10,d.speed));
