@@ -91,6 +91,25 @@ rt{font-size:.55em;font-weight:400}
 #game.running #btnRun{opacity:.45}
 #game:not(.running) #btnStop{opacity:.45}
 
+/* レベル4：きっかけの タブ・ステージの どうぐ・ボタン */
+.tabs{flex:none;display:none;gap:6px;overflow-x:auto;padding:6px 10px 0;background:#fff;border-top:1px solid var(--line);touch-action:pan-x}
+#game.lv4 .tabs{display:flex}
+#game.lv4 .progbar{border-top:none}
+.tab{flex:none;display:flex;align-items:center;gap:5px;padding:0 12px;min-height:46px;font-size:15px;background:#eef3f9;border-radius:12px 12px 0 0;border:2px solid transparent;border-bottom:none;white-space:nowrap;color:var(--sub)}
+.tab.on{background:#eaf0f7;border-color:var(--accent);color:#1d5fb8}
+.tab .cnt{font-size:12px;background:#fff;border-radius:8px;padding:0 6px;color:var(--sub)}
+.tab.busy{background:#fff3c4;color:var(--ink)}
+.tools{position:absolute;left:14px;top:14px;display:none;gap:6px;flex-wrap:wrap;background:rgba(255,255,255,.94);padding:6px;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.14);z-index:3;align-items:center;max-width:calc(100% - 28px)}
+#game.lv4.free:not(.running) .tools{display:flex}
+.tools .tl{font-size:14px;font-weight:700;color:var(--sub);padding:0 4px}
+.tools button{min-height:44px;padding:0 10px;font-size:15px;background:#eef3f9;border:2px solid transparent}
+.tools button.on{border-color:var(--accent);background:#e3eefc;color:#1d5fb8}
+.pad{position:absolute;right:18px;bottom:14px;display:none;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);gap:4px;z-index:3}
+#game.lv4.running .pad{display:grid}
+.pad button{width:64px;height:64px;background:rgba(47,123,224,.88);color:#fff;border-radius:16px;box-shadow:0 4px 0 #1d5fb8;display:flex;align-items:center;justify-content:center;touch-action:none}
+.pad button.off{visibility:hidden}
+.pad button:active{transform:translateY(3px);box-shadow:0 1px 0 #1d5fb8}
+
 /* ブロックをえらんだときのパネル */
 .panel{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);width:min(600px,94%);background:#fff;border-radius:18px;
   box-shadow:0 8px 28px rgba(30,40,60,.25);padding:12px 14px;display:none;z-index:5;max-height:calc(100% - 20px);overflow-y:auto}
@@ -168,6 +187,13 @@ rt{font-size:.55em;font-weight:400}
   .ins{height:50px}
   .palette{padding:5px 8px 6px;gap:6px}
   .card{padding:14px 18px}
+  .tab{min-height:36px;font-size:12px;padding:0 8px}
+  #game.lv4 .taskbar.free{display:none}
+  .tabs{padding:3px 8px 0}
+  .tools{left:6px;top:6px;padding:4px;gap:4px}
+  .tools button{min-height:36px;font-size:12px;padding:0 6px}
+  .pad{grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);right:8px;bottom:6px}
+  .pad button{width:44px;height:44px;border-radius:12px}
   #toast{bottom:150px;font-size:15px}
   .rbig{font-size:30px}
   .rchar{width:80px;height:80px}
@@ -218,6 +244,7 @@ rt{font-size:.55em;font-weight:400}
           <button data-v="1">1<small>うごく</small></button>
           <button data-v="2">2<small>いう・かお・おと</small></button>
           <button data-v="3">3<small>くりかえす・まつ</small></button>
+          <button data-v="4">4<small>ゲームを つくる</small></button>
         </div></div>
       <div class="setrow"><span class="setlbl">はやさ</span>
         <div class="seg" id="segSpeed">
@@ -258,7 +285,10 @@ rt{font-size:.55em;font-weight:400}
   <div id="stagewrap" class="stagewrap">
     <canvas id="cv"></canvas>
     <div id="panel" class="panel"></div>
+    <div id="tools" class="tools"></div>
+    <div id="pad" class="pad"></div>
   </div>
+  <div id="tabs" class="tabs scroll-x"></div>
   <div class="progbar">
     <div class="ctrl">
       <button id="btnRun" class="runbtn"></button>
@@ -330,6 +360,8 @@ const ICON = {
   repeat: '<path d="M17 3l3 3-3 3"/><path d="M4 11V9a3 3 0 0 1 3-3h13"/><path d="M7 21l-3-3 3-3"/><path d="M20 13v2a3 3 0 0 1-3 3H4"/>',
   lstart: '<path d="M10 4H6v16h4"/><path d="M12 12h7M16 9l3 3-3 3"/>',
   lend: '<path d="M14 4h4v16h-4"/><path d="M11 7.5A4.5 4.5 0 1 0 11 16.5"/><path d="M8.5 5l2.5 2.5L8.5 10"/>',
+  flag: '<path d="M6 21V4"/><path d="M6 4h11l-2.5 4L17 12H6"/>',
+  star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
   play: '<path d="M7 4.5v15l12-7.5z" fill="currentColor"/>',
   stop: '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>',
   reset: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
@@ -354,12 +386,27 @@ const BDEF = {
   wait:   { cat: 'ctrl', label: 'まつ', icon: 'wait', def: 1 },
   repeat: { cat: 'ctrl', label: 'くりかえす', icon: 'repeat' },          // パレット用（1組で出る）
   loopStart: { cat: 'ctrl', label: 'ここから', icon: 'lstart' },
-  loopEnd: { cat: 'ctrl', label: 'ここまで', icon: 'lend', def: 3 }
+  loopEnd: { cat: 'ctrl', label: 'ここまで', icon: 'lend', def: 3 },
+  clear: { cat: 'ctrl', label: 'クリア', icon: 'flag' }
 };
 const L1 = ['right', 'left', 'up', 'down'];
 const L2 = [...L1, 'jump', 'say', 'face', 'size', 'sound'];
 const L3 = [...L2, 'wait', 'repeat'];
-const LEVEL_PALETTE = { 1: L1, 2: L2, 3: L3 };
+const L4 = [...L3, 'clear'];
+const LEVEL_PALETTE = { 1: L1, 2: L2, 3: L3, 4: L4 };
+// レベル4の きっかけ（行）
+const ROWDEF = {
+  start: { label: 'スタートしたら', short: 'スタート', icon: 'play', rot: 0 },
+  right: { label: 'みぎボタンを おしたら', short: 'みぎボタン', icon: 'arrow', rot: 0 },
+  left:  { label: 'ひだりボタンを おしたら', short: 'ひだりボタン', icon: 'arrow', rot: 180 },
+  up:    { label: 'うえボタンを おしたら', short: 'うえボタン', icon: 'arrow', rot: -90 },
+  down:  { label: 'したボタンを おしたら', short: 'したボタン', icon: 'arrow', rot: 90 },
+  star:  { label: 'ほしに さわったら', short: 'ほしに さわったら', icon: 'star', rot: 0 },
+  goal:  { label: 'ゴールに さわったら', short: 'ゴールに さわったら', icon: 'flag', rot: 0 }
+};
+const ROW_KEYS = Object.keys(ROWDEF);
+const ARROW_KEYS = ['up', 'left', 'right', 'down'];
+const arrowRows = () => ({ right: [{ type: 'right' }], left: [{ type: 'left' }], up: [{ type: 'up' }], down: [{ type: 'down' }] });
 const SAY_PRESETS = ['こんにちは', 'やった！', 'せーの', 'がんばるぞ', 'ありがとう', 'またね'];
 const FACES = { normal: 'ふつう', smile: 'にこにこ', surprise: 'びっくり', sad: 'しょんぼり' };
 const SIZES = { big: 'おおきく', small: 'ちいさく', normal: 'もとに もどす' };
@@ -368,7 +415,7 @@ const SOUNDS = { pi: 'ピッ', poron: 'ポロン', don: 'ドン', doremi: 'ド�
 const CHARS = { piyo: 'ぴよ', neko: 'ねこ', robo: 'ロボ' };
 let COLS = 6, ROWS = 4;
 const GRIDS = { s: [6, 4], m: [8, 5], l: [10, 6] };
-const LEVEL_GRID = { 1: 's', 2: 'm', 3: 'l' };
+const LEVEL_GRID = { 1: 's', 2: 'm', 3: 'l', 4: 'l' };
 function setGrid(key) { [COLS, ROWS] = GRIDS[key] || GRIDS.s; }
 
 function prmText(b) {
@@ -447,6 +494,23 @@ const TASKS = {
       } }
   ]
 };
+TASKS[4] = [
+  { text: 'みぎボタンと ひだりボタンで うごくように して、ほしを ぜんぶ とろう', start: [2, 1],
+    items: { stars: [[0, 1], [5, 1]], walls: [], goal: null },
+    tabs: ['start', 'right', 'left'], tab: 'right', rows: {}, pal: ['right', 'left'],
+    hint: '「みぎボタンを おしたら」に「みぎ」を、「ひだりボタンを おしたら」に「ひだり」を いれてね。▶うごかす を おしたら、ステージの ボタンで うごかしてね',
+    win: () => S.live.stars.length === 0 },
+  { text: 'ほしに さわったら「やった！」と いうように しよう', start: [0, 2],
+    items: { stars: [[2, 2], [4, 1]], walls: [], goal: null },
+    tabs: ['start', 'right', 'left', 'up', 'down', 'star'], tab: 'star', rows: arrowRows(), pal: ['say', 'sound', 'jump', 'face'],
+    hint: '「ほしに さわったら」に「いう」を いれて、ことばを「やった！」に してね。▶うごかす を おして、ほしを とりに いってね',
+    win: () => S.flags.starSay },
+  { text: 'めいろを とおって ゴールまで いこう。ゴールに さわったら「クリア」に なるように しよう', start: [0, 0],
+    items: { stars: [], walls: [[1, 0], [1, 1], [3, 2], [3, 3], [4, 1], [4, 2]], goal: [5, 3] },
+    tabs: ['start', 'right', 'left', 'up', 'down', 'goal'], tab: 'goal', rows: arrowRows(), pal: ['clear', 'say', 'sound', 'jump'],
+    hint: '「ゴールに さわったら」に「クリア」を いれてね。▶うごかす を おして、ボタンで めいろを すすんでね',
+    win: () => S.cleared }
+];
 function loops(p) {
   const out = [];
   p.forEach((b, i) => { if (b.type === 'loopStart') { const e = p.findIndex((x, k) => k > i && x.type === 'loopEnd' && x.id === b.id); if (e > -1) out.push({ s: i, e }); } });
@@ -471,12 +535,21 @@ function atGoal(a, t) { return t.goal && Math.round(a.x) === t.goal[0] && Math.r
 /* ================= じょうたい ================= */
 const S = {
   mode: 'tut', level: 1, taskIdx: 0, prog: [], start: [1, 2], goal: null,
-  char: 'piyo', bg: 'white', palette: L1, running: false, runId: 0, selected: -1, runIdx: -1, cursor: null
+  char: 'piyo', bg: 'white', palette: L1, running: false, runId: 0, selected: -1, runIdx: -1, cursor: null,
+  rows: { start: [] }, tab: 'start', tabs: ['start'], items: { stars: [], walls: [], goal: null },
+  live: { stars: [], total: 0 }, queue: [], busy: false, flags: {}, cleared: false, banner: null, tool: 'start', busyKey: null
 };
 let actor = {};
 function resetActor() {
   actor = { x: S.start[0], y: S.start[1], dir: 1, face: 'normal', scale: 1, jump: 0, shake: 0, pop: 0, bubble: null };
 }
+function resetItems() {
+  S.live = { stars: S.items.stars.map(a => a.slice()), total: S.items.stars.length };
+  S.cleared = false; S.banner = null; S.flags = {};
+}
+function setProg(arr) { S.prog = arr; S.rows[S.tab] = arr; }
+const isGame = () => S.level === 4;
+const hasAt = (list, x, y) => list.findIndex(a => a[0] === x && a[1] === y);
 resetActor();
 
 /* ================= 音 ================= */
@@ -611,7 +684,7 @@ async function execBlock(b) {
     case 'right': case 'left': case 'up': case 'down': {
       if (d.dx) actor.dir = d.dx;
       const nx = actor.x + d.dx, ny = actor.y + d.dy;
-      if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) {
+      if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS || hasAt(S.items.walls, nx, ny) > -1) {
         playSound('bump');
         await tween(0.4 * sp, t => { actor.shake = Math.sin(t * Math.PI * 5) * 0.07 * (1 - t); });
         actor.shake = 0;
@@ -623,6 +696,7 @@ async function execBlock(b) {
           actor.jump = Math.sin(Math.PI * t) * 0.08;
         });
         actor.x = nx; actor.y = ny; actor.jump = 0;
+        onArrive();
       }
       break;
     }
@@ -650,25 +724,99 @@ async function execBlock(b) {
       await tween(b.p, () => { }); break;
     case 'loopStart': case 'loopEnd':
       await tween(0.2 * sp, () => { }); break;
+    case 'clear':
+      S.cleared = true; S.banner = 'クリア！'; playSound('ok');
+      actor.face = 'smile';
+      await tween(0.6, t => { actor.pop = Math.sin(Math.PI * t) * 0.15; });
+      actor.pop = 0;
+      endGame();
+      break;
   }
+}
+// マスに ついたとき：ほしを とる・ゴール
+function onArrive() {
+  if (!S.running) return;
+  const x = actor.x, y = actor.y;
+  const k = hasAt(S.live.stars, x, y);
+  if (k > -1) {
+    S.live.stars.splice(k, 1);
+    playSound('poron');
+    enqueue('star');
+  }
+  if (S.items.goal && S.items.goal[0] === x && S.items.goal[1] === y) enqueue('goal');
+}
+function enqueue(key) {
+  if (!S.running || !isGame()) return;
+  const row = S.rows[key];
+  if (ARROW_KEYS.includes(key)) {
+    if (!row || !row.length) { toast(`「${ROWDEF[key].label}」に ブロックが ないよ`); return; }
+    if (S.busy || S.queue.length) return;   // うごいている ときは まつ
+  } else if (!row || !row.length) return;
+  S.queue.push(key);
+  pump();
+}
+async function pump() {
+  if (S.busy) return;
+  const id = S.runId;
+  while (S.queue.length && id === S.runId) {
+    S.busy = true;
+    const key = S.queue.shift();
+    await runRow(key, id);
+    if (id !== S.runId) return;
+    if (key === 'star' && (S.rows.star || []).some(b => b.type === 'say' && b.p === 'やった！')) S.flags.starSay = true;
+    S.busy = false; S.busyKey = null; renderTabs();
+    checkWin();
+  }
+  S.busy = false;
+}
+async function runRow(key, id) {
+  const prog = S.rows[key] || [];
+  if (isGame()) {
+    S.busyKey = key;
+    if (S.tab !== key) { S.tab = key; S.prog = S.rows[key] || (S.rows[key] = []); S.cursor = null; renderRow(); }
+    renderTabs();
+  }
+  for (const st of compile(prog)) {
+    if (id !== S.runId) return false;
+    if (S.tab === key) markRunning(st.i, st);
+    await execBlock(prog[st.i]);
+    if (id !== S.runId) return false;
+    await tween(0.08, () => { });
+  }
+  if (S.tab === key) markRunning(-1);
+  return true;
+}
+function checkWin() {
+  if (!S.running || S.mode !== 'tut' || !isGame()) return;
+  const t = TASKS[S.level][S.taskIdx];
+  if (t.win && t.win()) { endGame(); setTimeout(() => showSuccess(), 500); }
+}
+function endGame() {
+  S.runId++;
+  S.running = false; S.queue = []; S.busy = false; S.busyKey = null;
+  actor.bubble = null; actor.jump = 0; actor.shake = 0;
+  markRunning(-1); setRunningUI(false); renderRow(); renderTabs();
+  if (S.mode === 'tut' && isGame() && S.cleared) setTimeout(() => { if (!$('dlg').classList.contains('on')) showSuccess(); }, 500);
 }
 async function run() {
   if (S.running) return;
   unlockAll();               // await より まえに 音を「解錠」する
   closePanel();
-  if (!S.prog.length) { toast('ブロックを ならべてから ▶を おしてね'); return; }
-  resetActor();
-  S.running = true;
+  const game = isGame();
+  if (!game && !S.prog.length) { toast('ブロックを ならべてから ▶を おしてね'); return; }
+  resetActor(); resetItems();
+  S.running = true; S.queue = []; S.busy = false;
   const id = ++S.runId;
   setRunningUI(true);
   await tween(0.15, () => { });
-  for (const st of compile(S.prog)) {
-    if (id !== S.runId) return;
-    markRunning(st.i, st);
-    await execBlock(S.prog[st.i]);
-    if (id !== S.runId) return;
-    await tween(0.08, () => { });
+  if (id !== S.runId) return;
+  if (game) {
+    // ゲームは「とめる」まで つづく。スタートの 行を うごかしたら、ボタンを まつ
+    if ((S.rows.start || []).length) enqueue('start');
+    else renderTabs();
+    return;
   }
+  await runRow('start', id);
   if (id !== S.runId) return;
   markRunning(-1);
   S.running = false; setRunningUI(false); renderRow();
@@ -678,10 +826,10 @@ function stopRun() {
   if (!S.running) return;
   S.runId++; stopTweens();
   try { speechSynthesis.cancel(); } catch (e) { }
-  S.running = false;
+  S.running = false; S.queue = []; S.busy = false; S.busyKey = null;
   actor.x = Math.round(actor.x); actor.y = Math.round(actor.y);
   actor.jump = 0; actor.shake = 0; actor.pop = 0; actor.bubble = null;
-  markRunning(-1); setRunningUI(false); renderRow();
+  markRunning(-1); setRunningUI(false); renderRow(); renderTabs();
 }
 function setRunningUI(on) { $('game').classList.toggle('running', on); }
 function markRunning(i, st) {
@@ -704,9 +852,24 @@ function markRunning(i, st) {
 function judge() {
   const t = TASKS[S.level][S.taskIdx];
   const msg = t.check ? t.check(S.prog, actor, t) : (atGoal(actor, t) ? null : NOT_GOAL);
+  if (!msg) { showSuccess(); return; }
+  {
+    playSound('retry');
+    const card = $('dlgCard');
+    card.innerHTML = `<canvas class="rchar" id="rChar" width="240" height="240"></canvas>
+      <div class="rbig ng">おしい！</div>
+      <p>${msg}</p>
+      <p class="sub">ブロックを なおして、もういちど やってみよう</p>
+      <div class="dbtns"><button class="big b2" id="rRetry">もういちど</button></div>`;
+    drawPreviewChar($('rChar'), S.char, 'surprise');
+    showDlg();
+    onTap($('rRetry'), () => { hideDlg(); resetActor(); resetItems(); });
+  }
+}
+function showSuccess() {
   const isLast = S.taskIdx >= TASKS[S.level].length - 1;
   const card = $('dlgCard');
-  if (!msg) {
+  {
     playSound('ok');
     const words = ['できたね！', 'やったね！', 'すごい！'];
     card.innerHTML = `<canvas class="rchar" id="rChar" width="240" height="240"></canvas>
@@ -719,16 +882,6 @@ function judge() {
       hideDlg();
       if (isLast) showClear(); else { S.taskIdx++; loadTask(); }
     });
-  } else {
-    playSound('retry');
-    card.innerHTML = `<canvas class="rchar" id="rChar" width="240" height="240"></canvas>
-      <div class="rbig ng">おしい！</div>
-      <p>${msg}</p>
-      <p class="sub">ブロックを なおして、もういちど やってみよう</p>
-      <div class="dbtns"><button class="big b2" id="rRetry">もういちど</button></div>`;
-    drawPreviewChar($('rChar'), S.char, 'surprise');
-    showDlg();
-    onTap($('rRetry'), () => { hideDlg(); resetActor(); });
   }
 }
 function showDlg() { $('dlg').classList.add('on'); }
@@ -748,7 +901,9 @@ function renderRow() {
   const row = $('row');
   row.innerHTML = '';
   if (!S.prog.length) {
-    row.innerHTML = `<div class="empty">${R('下', 'した')}の ブロックを タップすると、ここに ならぶよ</div>`;
+    row.innerHTML = isGame()
+      ? `<div class="empty">「${ROWDEF[S.tab].label}」に することを ならべてね</div>`
+      : `<div class="empty">${R('下', 'した')}の ブロックを タップすると、ここに ならぶよ</div>`;
   }
   let depth = 0;
   const cur = S.cursor;
@@ -765,6 +920,7 @@ function renderRow() {
     row.appendChild(el);
   });
   $('btnTrash').classList.toggle('ready', S.selected >= 0);
+  if (isGame()) renderTabs();
 }
 function renderPalette() {
   const pal = $('palette');
@@ -819,7 +975,7 @@ function moveBlock(from, to) {
   const [b] = S.prog.splice(from, 1);
   S.prog.splice(to, 0, b);
   if (!validLoops(S.prog)) {
-    S.prog = before;
+    setProg(before);
     toast('「ここから」は「ここまで」より まえに おいてね。<br>くりかえしの なかに くりかえしは いれられないよ');
     return false;
   }
@@ -994,21 +1150,36 @@ function startGame(mode) {
   $('btnHint').style.display = mode === 'tut' ? '' : 'none';
   $('btnChar').style.display = mode === 'free' ? '' : 'none';
   $('btnBg').style.display = mode === 'free' ? '' : 'none';
+  $('game').classList.toggle('lv4', S.level === 4);
+  $('game').classList.toggle('free', mode === 'free');
   if (mode === 'tut') { S.taskIdx = 0; loadTask(); } else loadFree();
   show('game');
+}
+function cloneRows(rows) {
+  const out = {};
+  ROW_KEYS.forEach(k => { out[k] = (rows && Array.isArray(rows[k]) ? rows[k] : []).map(b => Object.assign({}, b, { p: b.p !== undefined ? b.p : BDEF[b.type].def })); });
+  return out;
 }
 function loadTask() {
   stopRun();
   const t = TASKS[S.level][S.taskIdx];
   setGrid('s');   // おだいは 6×4 で つくってある
-  S.prog = []; S.cursor = null; S.start = t.start.slice(); S.goal = t.goal; S.char = 'piyo'; S.bg = 'white';
+  S.cursor = null; S.start = t.start.slice(); S.goal = t.goal || null; S.char = 'piyo'; S.bg = 'white';
+  if (isGame()) {
+    S.rows = cloneRows(t.rows); S.tabs = t.tabs; S.tab = t.tab;
+    S.items = { stars: t.items.stars.map(a => a.slice()), walls: t.items.walls.map(a => a.slice()), goal: t.items.goal ? t.items.goal.slice() : null };
+  } else {
+    S.rows = { start: [] }; S.tabs = ['start']; S.tab = 'start';
+    S.items = { stars: [], walls: [], goal: null };
+  }
+  S.prog = S.rows[S.tab];
   S.palette = t.pal; S.selected = -1;
   $('gTitle').textContent = `レベル${S.level}　おだい ${S.taskIdx + 1} / ${TASKS[S.level].length}`;
   $('taskbar').className = 'taskbar';
   $('taskText').innerHTML = t.text;
   $('hintText').innerHTML = 'ヒント：' + t.hint;
   $('hintText').classList.remove('on');
-  resetActor(); renderRow(); renderPalette(); $('panel').classList.remove('on');
+  resetActor(); resetItems(); renderTabs(); renderRow(); renderPalette(); renderPad(); $('panel').classList.remove('on');
 }
 function loadFree() {
   stopRun();
@@ -1016,27 +1187,118 @@ function loadFree() {
   const sv = store.get('piyoprog-free-' + S.level, null) || {};
   const pal = LEVEL_PALETTE[S.level];
   const ok = t => t !== 'repeat' && (pal.includes(t) || (pal.includes('repeat') && (t === 'loopStart' || t === 'loopEnd')));
-  S.prog = Array.isArray(sv.prog) ? sv.prog.filter(b => b && ok(b.type)) : [];
-  if (!validLoops(S.prog)) S.prog = S.prog.filter(b => b.type !== 'loopStart' && b.type !== 'loopEnd');
+  const clean = arr => {
+    let p = Array.isArray(arr) ? arr.filter(b => b && ok(b.type)) : [];
+    if (!validLoops(p)) p = p.filter(b => b.type !== 'loopStart' && b.type !== 'loopEnd');
+    return p;
+  };
+  const inGrid = a => Array.isArray(a) && a[0] >= 0 && a[1] >= 0 && a[0] < COLS && a[1] < ROWS;
+  if (isGame()) {
+    const base = sv.rows ? sv.rows : Object.assign({ start: [] }, arrowRows());
+    S.rows = {}; ROW_KEYS.forEach(k => { S.rows[k] = clean(cloneRows(base)[k]); });
+    S.tabs = ROW_KEYS.slice(); S.tab = 'start';
+    const it = sv.items || {};
+    S.items = {
+      stars: (it.stars || []).filter(inGrid), walls: (it.walls || []).filter(inGrid),
+      goal: inGrid(it.goal) ? it.goal : null
+    };
+  } else {
+    S.rows = { start: clean(sv.rows ? sv.rows.start : sv.prog) };
+    S.tabs = ['start']; S.tab = 'start';
+    S.items = { stars: [], walls: [], goal: null };
+  }
+  S.prog = S.rows[S.tab];
   S.cursor = null;
   S.start = Array.isArray(sv.start) && sv.start[0] >= 0 && sv.start[1] >= 0
     ? [Math.min(COLS - 1, sv.start[0]), Math.min(ROWS - 1, sv.start[1])] : [1, Math.floor(ROWS / 2)];
   S.char = CHARS[sv.char] ? sv.char : 'piyo';
   S.bg = BGS[sv.bg] ? sv.bg : 'white';
-  S.goal = null; S.palette = pal; S.selected = -1;
+  S.goal = null; S.palette = pal; S.selected = -1; S.tool = 'start';
   $('gTitle').textContent = `じゆうに つくる（レベル${S.level}・${COLS}×${ROWS}マス）`;
   $('taskbar').className = 'taskbar free';
-  $('taskText').innerHTML = `ブロックを ならべて「うごかす」を おしてね。ステージを タップすると、スタートの ばしょが かわるよ`;
+  $('taskText').innerHTML = isGame()
+    ? `ステージに ほし・かべ・ゴールを おいて、ボタンで あそべる ゲームを つくろう。${R('下', 'した')}の タブで「いつ」うごくかを えらんでね`
+    : `ブロックを ならべて「うごかす」を おしてね。ステージを タップすると、スタートの ばしょが かわるよ`;
   $('hintText').classList.remove('on');
-  resetActor(); renderRow(); renderPalette();
+  resetActor(); resetItems(); renderTabs(); renderRow(); renderPalette(); renderTools(); renderPad();
 }
 function save() {
   if (S.mode !== 'free') return;
-  store.set('piyoprog-free-' + S.level, { prog: S.prog, start: S.start, char: S.char, bg: S.bg });
+  store.set('piyoprog-free-' + S.level, { rows: S.rows, items: S.items, start: S.start, char: S.char, bg: S.bg });
+}
+/* ---- レベル4の タブ・どうぐ・ボタン ---- */
+function renderTabs() {
+  const box = $('tabs');
+  if (!isGame()) { box.innerHTML = ''; return; }
+  box.innerHTML = '';
+  S.tabs.forEach(k => {
+    const d = ROWDEF[k], n = (S.rows[k] || []).length;
+    const b = document.createElement('button');
+    b.className = 'tab' + (k === S.tab ? ' on' : '') + (S.running && S.busyKey === k ? ' busy' : '');
+    b.innerHTML = svg(d.icon, d.rot, 20) + d.short + `<span class="cnt">${n}</span>`;
+    onTap(b, () => {
+      if (S.tab === k) return;
+      S.tab = k; S.prog = S.rows[k] || (S.rows[k] = []); S.cursor = null; S.selected = -1;
+      $('panel').classList.remove('on');
+      renderTabs(); renderRow();
+    });
+    box.appendChild(b);
+  });
+  const on = box.querySelector('.tab.on');
+  if (on) { const l = on.offsetLeft; if (l < box.scrollLeft || l + on.offsetWidth > box.scrollLeft + box.clientWidth) box.scrollLeft = l - 20; }
+}
+const TOOLS = { start: 'スタート', star: 'ほし', wall: 'かべ', goal: 'ゴール', erase: 'けす' };
+function renderTools() {
+  const box = $('tools');
+  box.innerHTML = '<span class="tl">ステージに おく：</span>';
+  Object.keys(TOOLS).forEach(k => {
+    const b = document.createElement('button');
+    b.className = k === S.tool ? 'on' : '';
+    b.textContent = TOOLS[k];
+    onTap(b, () => { S.tool = k; renderTools(); });
+    box.appendChild(b);
+  });
+}
+function renderPad() {
+  const box = $('pad');
+  box.innerHTML = '';
+  const layout = [null, 'up', null, 'left', null, 'right', null, 'down', null];
+  layout.forEach(k => {
+    const b = document.createElement('button');
+    if (!k || !S.tabs.includes(k)) { b.className = 'off'; box.appendChild(b); return; }
+    b.innerHTML = svg('arrow', ROWDEF[k].rot, 30);
+    b.addEventListener('pointerdown', e => { e.preventDefault(); unlockAudio(); enqueue(k); });
+    box.appendChild(b);
+  });
+}
+function editStage(cx, cy) {
+  const it = S.items, atStart = S.start[0] === cx && S.start[1] === cy;
+  const rm = list => { const k = hasAt(list, cx, cy); if (k > -1) { list.splice(k, 1); return true; } return false; };
+  const isGoal = it.goal && it.goal[0] === cx && it.goal[1] === cy;
+  switch (S.tool) {
+    case 'start':
+      rm(it.walls); rm(it.stars); if (isGoal) it.goal = null;
+      S.start = [cx, cy]; break;
+    case 'star':
+      if (atStart) { toast('スタートの ばしょには おけないよ'); return; }
+      if (!rm(it.stars)) { if (it.stars.length >= 30) { toast('ほしは 30こ までだよ'); return; } rm(it.walls); if (isGoal) it.goal = null; it.stars.push([cx, cy]); }
+      break;
+    case 'wall':
+      if (atStart) { toast('スタートの ばしょには おけないよ'); return; }
+      if (!rm(it.walls)) { rm(it.stars); if (isGoal) it.goal = null; it.walls.push([cx, cy]); }
+      break;
+    case 'goal':
+      if (atStart) { toast('スタートの ばしょには おけないよ'); return; }
+      if (isGoal) it.goal = null; else { rm(it.walls); rm(it.stars); it.goal = [cx, cy]; }
+      break;
+    case 'erase':
+      rm(it.walls); rm(it.stars); if (isGoal) it.goal = null; break;
+  }
+  resetActor(); resetItems(); save(); playSound('tap');
 }
 function showClear() {
   $('clearTitle').textContent = `レベル${S.level}の おだいが ぜんぶ できたね！`;
-  $('cNext').style.display = S.level < 3 ? '' : 'none';
+  $('cNext').style.display = S.level < 4 ? '' : 'none';
   drawPreviewChar($('clearChar'), 'piyo', 'smile');
   show('clear');
 }
@@ -1074,7 +1336,7 @@ function initButtons() {
     if (e.target.closest && e.target.closest('.blk')) return;
     if (S.cursor != null) { S.cursor = null; renderRow(); const row = $('row'); row.scrollLeft = row.scrollWidth; toast('れつの いちばん うしろに ならべるよ'); }
   });
-  onTap($('btnReset'), () => { stopRun(); resetActor(); });
+  onTap($('btnReset'), () => { stopRun(); resetActor(); resetItems(); });
   onTap($('btnTrash'), () => {
     if (S.selected >= 0) removeBlock(S.selected);
     else toast('けしたい ブロックを タップしてから おしてね。<br>ブロックを ここへ ひっぱっても けせるよ');
@@ -1087,7 +1349,7 @@ function initButtons() {
       <div class="dbtns"><button class="big b3" id="dNo">やめる</button><button class="big b1" id="dYes">けす</button></div>`;
     showDlg();
     onTap($('dNo'), hideDlg);
-    onTap($('dYes'), () => { hideDlg(); S.prog = []; S.cursor = null; S.selected = -1; $('panel').classList.remove('on'); renderRow(); save(); resetActor(); });
+    onTap($('dYes'), () => { hideDlg(); setProg([]); S.cursor = null; S.selected = -1; $('panel').classList.remove('on'); renderRow(); save(); resetActor(); });
   });
   onTap($('btnChar'), () => chooseDialog('キャラクターを えらんでね', CHARS, S.char,
     (cv, k) => drawPreviewChar(cv, k, 'normal'),
@@ -1096,7 +1358,7 @@ function initButtons() {
     (cv, k) => { const c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height); drawBoard(c, 6, 6, 28, k, 6, 4); },
     k => { S.bg = k; save(); }));
   onTap($('cFree'), () => startGame('free'));
-  onTap($('cNext'), () => { settings.level = Math.min(3, S.level + 1); saveSettings(); syncSeg('segLevel', settings.level); startGame('tut'); });
+  onTap($('cNext'), () => { settings.level = Math.min(4, S.level + 1); saveSettings(); syncSeg('segLevel', settings.level); startGame('tut'); });
   onTap($('cHome'), () => show('home'));
 
   // ステージを タップ：パネルを とじる／スタートの ばしょを かえる
@@ -1106,7 +1368,13 @@ function initButtons() {
     const r = $('cv').getBoundingClientRect(), g = geo();
     const cx = Math.floor((e.clientX - r.left - g.ox) / g.cell), cy = Math.floor((e.clientY - r.top - g.oy) / g.cell);
     if (cx < 0 || cx >= COLS || cy < 0 || cy >= ROWS) return;
+    if (isGame()) { editStage(cx, cy); return; }
     S.start = [cx, cy]; resetActor(); save(); playSound('tap');
+  });
+  // キーボードの やじるしでも うごかせる
+  document.addEventListener('keydown', e => {
+    const k = { ArrowRight: 'right', ArrowLeft: 'left', ArrowUp: 'up', ArrowDown: 'down' }[e.key];
+    if (k && S.running && isGame() && $('game').classList.contains('on')) { e.preventDefault(); enqueue(k); }
   });
 }
 function chooseDialog(title, map, cur, drawFn, onPick) {
@@ -1323,6 +1591,9 @@ function drawStage() {
   const g = geo();
   drawBoard(ctx, g.ox, g.oy, g.cell, S.bg);
   if (S.goal) drawStar(ctx, g.ox + (S.goal[0] + 0.5) * g.cell, g.oy + (S.goal[1] + 0.5) * g.cell, g.cell * 0.3 * (1 + Math.sin(clock * 3) * 0.04));
+  S.items.walls.forEach(([x, y]) => drawWall(ctx, g.ox + x * g.cell, g.oy + y * g.cell, g.cell));
+  if (S.items.goal) drawFlag(ctx, g.ox + (S.items.goal[0] + 0.5) * g.cell, g.oy + (S.items.goal[1] + 0.5) * g.cell, g.cell);
+  S.live.stars.forEach(([x, y], k) => drawStar(ctx, g.ox + (x + 0.5) * g.cell, g.oy + (y + 0.5) * g.cell, g.cell * 0.25 * (1 + Math.sin(clock * 3 + k) * 0.05)));
   if (S.mode === 'free' && !S.running) {
     const x = g.ox + S.start[0] * g.cell, y = g.oy + S.start[1] * g.cell;
     ctx.save(); ctx.setLineDash([6, 5]); ctx.strokeStyle = S.bg === 'night' ? '#9fb2e6' : '#8ea2bb'; ctx.lineWidth = 2;
@@ -1341,6 +1612,52 @@ function drawStage() {
   ctx.beginPath(); ctx.ellipse(cx, baseY + size * 0.5, size * 0.38 * (1 - Math.min(0.5, actor.jump * 0.4)), size * 0.08, 0, 0, Math.PI * 2); ctx.fill();
   drawChar(ctx, S.char, cx, cy, size, actor.face, actor.dir);
   if (actor.bubble) drawBubble(ctx, actor.bubble, cx, cy - size * 0.6, g.cell);
+  if (isGame() && S.live.total > 0) {
+    const got = S.live.total - S.live.stars.length;
+    const txt = `ほし ${got} / ${S.live.total}`;
+    ctx.font = `700 ${Math.max(14, Math.round(g.cell * 0.2))}px 'BIZ UDPGothic', sans-serif`;
+    const w = ctx.measureText(txt).width + 24, h = Math.max(28, g.cell * 0.36);
+    const hx = g.ox + g.cell * COLS - w - 8, hy = g.oy + 8;
+    ctx.fillStyle = 'rgba(255,255,255,.92)'; rr(ctx, hx, hy, w, h, h / 2); ctx.fill();
+    ctx.strokeStyle = '#d9a000'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#7a5b00'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(txt, hx + w / 2, hy + h / 2 + 1);
+  }
+  if (S.banner) {
+    const fs = Math.max(32, Math.round(g.cell * 0.9));
+    ctx.font = `700 ${fs}px 'BIZ UDPGothic', sans-serif`;
+    const w = ctx.measureText(S.banner).width + fs * 1.2, h = fs * 1.6;
+    const bx = CW / 2 - w / 2, by = CH / 2 - h / 2;
+    ctx.fillStyle = 'rgba(255,255,255,.93)'; rr(ctx, bx, by, w, h, 24); ctx.fill();
+    ctx.strokeStyle = '#1f9e6a'; ctx.lineWidth = 4; ctx.stroke();
+    ctx.fillStyle = '#1f9e6a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(S.banner, CW / 2, CH / 2 + 2);
+  }
+}
+function drawWall(c, x, y, cell) {
+  const p = cell * 0.06;
+  rr(c, x + p, y + p, cell - p * 2, cell - p * 2, cell * 0.12);
+  c.fillStyle = '#b08d6a'; c.fill();
+  c.strokeStyle = '#8a6a4a'; c.lineWidth = Math.max(2, cell * 0.04); c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,.28)'; c.lineWidth = Math.max(1.5, cell * 0.025);
+  c.beginPath();
+  c.moveTo(x + p * 2, y + cell / 2); c.lineTo(x + cell - p * 2, y + cell / 2);
+  c.moveTo(x + cell / 2, y + p * 2); c.lineTo(x + cell / 2, y + cell / 2);
+  c.moveTo(x + cell * 0.3, y + cell / 2); c.lineTo(x + cell * 0.3, y + cell - p * 2);
+  c.moveTo(x + cell * 0.72, y + cell / 2); c.lineTo(x + cell * 0.72, y + cell - p * 2);
+  c.stroke();
+}
+function drawFlag(c, cx, cy, cell) {
+  const h = cell * 0.62, px = cx - cell * 0.14, top = cy - h / 2, bot = cy + h / 2;
+  c.fillStyle = 'rgba(0,0,0,.12)'; c.beginPath(); c.ellipse(px, bot, cell * 0.16, cell * 0.05, 0, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#5b6b80'; c.lineWidth = Math.max(2, cell * 0.05); c.lineCap = 'round';
+  c.beginPath(); c.moveTo(px, top); c.lineTo(px, bot); c.stroke();
+  c.beginPath(); c.moveTo(px, top); c.lineTo(px + cell * 0.4, top + cell * 0.12); c.lineTo(px, top + cell * 0.26); c.closePath();
+  c.fillStyle = '#ef5b4c'; c.fill();
+  c.fillStyle = '#5b6b80';
+  c.font = `700 ${Math.max(10, Math.round(cell * 0.14))}px 'BIZ UDPGothic', sans-serif`;
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  c.fillText('ゴール', cx, bot + cell * 0.04);
 }
 
 /* ================= メインループ ================= */
